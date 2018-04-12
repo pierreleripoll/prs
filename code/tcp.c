@@ -9,7 +9,7 @@
 #include <arpa/inet.h>
 #include "tcp.h"
 
-int connectServer(int port, int pid[maxConnection], int i) {
+int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i) {
 	struct sockaddr_in addr_client;
 	int taille_addr_client = sizeof(addr_client);
 
@@ -55,13 +55,39 @@ int connectServer(int port, int pid[maxConnection], int i) {
 		pid[i]=fork();
 
 		if(pid[i]==0){
+
+			/*******************Creation des sockets --- UDP ON EST LE FILS ***************************/
+			*udp_descripteur = socket(AF_INET, SOCK_DGRAM, 0); //on crée la socket UDP
+			if(*udp_descripteur < 0) {
+				printf("Erreur, socket UDP non crée\n");
+			} else {
+				printf("Descripteur prive %d\n", *udp_descripteur);
+
+				/*Pour faire en sorte que la socket ne soit pas bloquée*/
+				int reuse = 1;
+				setsockopt(*udp_descripteur, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
+
+				/*pour la remise à zero de la variable*/
+				struct sockaddr_in my_addrUDP;
+				memset((char*)&my_addrUDP, 0, sizeof(my_addrUDP));
+
+
+				/*Initialisation socket addresse*/
+				my_addrUDP.sin_family = AF_INET;
+				my_addrUDP.sin_port = htons(portSocket);
+				my_addrUDP.sin_addr.s_addr = addr_client.sin_addr.s_addr;
+
+				bind(*udp_descripteur, (struct sockaddr*)&my_addrUDP, sizeof(my_addrUDP));
+			}
+			printf("Fin boucle init fils\n");
+			kill(getppid(),SIGUSR1);
 			return portSocket;
 		}
 
 		// CONTINUER SEULEMENT LORSQUE LE FILS EST PRET//
-		// if(pause()<0){
-		// 	perror("pause");
-		// }
+		if(pause()<0){
+			perror("pause");
+		}
 		printf("Daddy woke up\n");
 		strcpy(msg, "SYN-ACK");
 		strcat(msg, porti);
@@ -123,7 +149,7 @@ int initialization_socket(int port) {
 
 
 
-int envoyerBinary(int sock, char nom_fichier[64]) {
+int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 	int i;
 	int num_segment = 0;
 
@@ -138,16 +164,49 @@ int envoyerBinary(int sock, char nom_fichier[64]) {
 	char message[TAILLE_MAX_SEGMENT];
 
 	for (i=0;i<num_segment;i++){
-		printf("Buff %d :\n%s\n",i,buffer[i]);
+		//printf("Buff %d :\n%s\n",i,buffer[i]);
 		snprintf(message,7,"%06d",i);
+		printf("Entete message : %s\n",message);
 		strcat(message,buffer[i]);
-		printf("Message final :\n%s\n--------------------\n",message);
-		if(send(sock, message, 1024,0)==-1){
+	//	printf("Message final :\n%s\n--------------------\n",message);
+		if(sendto(sock, message, 1024,0,addr,sizeof(*addr))==-1){
 			printf("Error to send i %d",i);
+			perror("send");
 			return -1;
 		}
 	}
 
+	return 1;
+}
+
+int loadFile(char * buff, char nom_fichier[64]){
+	int num_segment = 0;
+
+	FILE *fichier;
+	fichier = fopen(nom_fichier,"rb");
+	printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
+	//	printf("***ENVOIE***\n");
+	num_segment = fread(buff,1024,TAILLE_MAX_SEGMENT-TAILLE_ENTETE,fichier);
+	return num_segment;
+}
+
+char * initBuff(){
+	char * buffer = malloc(sizeof(char)* 1024 * (TAILLE_MAX_SEGMENT-TAILLE_ENTETE));
+	return buffer;
+}
+
+int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff){
+	char message[TAILLE_MAX_SEGMENT];
+
+	snprintf(message,7,"%06d",numSegment);
+	printf("Entete : %s\n",message);
+	strcat(message,buff);
+
+	if(sendto(sock, message, 1024,0,addr,sizeof(*addr))==-1){
+		printf("Error to send i %d",numSegment);
+		perror("send");
+		return -1;
+	}
 	return 1;
 }
 

@@ -25,7 +25,8 @@ void handle_signal() {
 		sendto(udp_descripteur, "FIN", 4, 0,(struct sockaddr *)&addr_client, (socklen_t)taille_addr_client);
 		close(udp_descripteur);
 	} else {
-		sleep(1);
+		printf("FATHER CAUGHT SIGNAL\n");
+
 	}
 		printf("SIGNAL HANDLE END\n");
 }
@@ -48,11 +49,11 @@ void remiseAZero(int pid[maxConnection]) {
 
 int main(int argc, char **argv)
 {
-	int portUsr, reuse, i, connected, pid[maxConnection];
+	int portUsr, i, connected, pid[maxConnection];
 	i=0;
 	pere = 0;
 	remiseAZero(pid);
-	signal(SIGINT, handle_signal);
+	signal(SIGUSR1, handle_signal);
 	connected = 0;
 
 	/*******************Arguments lors du lancement du programme********************/
@@ -73,63 +74,51 @@ int main(int argc, char **argv)
 
 	while(pere==0) {
 		/************* CONNECTION *****************/
-		connected = connectServer(portUsr, pid,i);
+		connected = connectServer(portUsr, &udp_descripteur, pid,i);
 
 		if(pid[i] == 0) { //si je suis le fils
 			pere = 1;
-			/*******************Creation des sockets --- UDP ***************************/
-			udp_descripteur = socket(AF_INET, SOCK_DGRAM, 0); //on crée la socket UDP
-			if(udp_descripteur < 0) {
-				printf("Erreur, socket UDP non crée\n");
-			} else {
-				printf("Descripteur prive %d\n", udp_descripteur);
-
-				/*Pour faire en sorte que la socket ne soit pas bloquée*/
-				reuse = 1;
-				setsockopt(udp_descripteur, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-
-				/*pour la remise à zero de la variable*/
-				struct sockaddr_in my_addrUDP;
-				memset((char*)&my_addrUDP, 0, sizeof(my_addrUDP));
-
-
-				/*Initialisation socket addresse*/
-				my_addrUDP.sin_family = AF_INET;
-				my_addrUDP.sin_port = htons(connected);
-				my_addrUDP.sin_addr.s_addr = htons(INADDR_ANY);	//pour le serveur
-
-				bind(udp_descripteur, (struct sockaddr*)&my_addrUDP, sizeof(my_addrUDP));
-				printf("Fin boucle init fils\n");
-				kill(getppid(),SIGUSR1);
-				}
 		}
+
 	}
 
 	/********************* LANCEMENT BOUCLE INFINIE - PROGRAMME **************/
-	while(connected != 0) {
-		printf("***CONNECTED***\nPere=%d\nConnected=%d\n",pere,connected);
+
+
+
+	if(connected != 0) {
+		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		/********CONNECTION REUSSI *******************/
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
 
-		envoyerBinary(udp_descripteur, message_recu);
-		/*
-		sendto(udp_descripteur, message_recu, strlen(message_recu)+1, 0,(struct sockaddr *)&addr_client, (socklen_t)taille_addr_client);
-		if(strcmp(message_recu,"exit") == 0) {
-		printf("EXIT\n");
-		close(udp_descripteur);
-		pid[i] = 0;
-		port[connected - 6000] = 0;
+		int valid = 0;
+		char * buffer = initBuff();
+		struct timeval tv;
+		tv.tv_sec = 0;
+		tv.tv_usec = 10;
+		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
+		    perror("Error");
+		}
+		int n_seg = loadFile(buffer,message_recu);
+		int ack = 0;
+		while(valid != n_seg){
+			envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,valid,buffer);
+			if(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
+				if(strcmp(message_recu,"ACK") > 0){
+					printf("Recu : %s\n",message_recu);
+					ack = atoi(&message_recu[3]) +1;
+					if(ack<valid) valid = ack;
+				}
+			}
+			else {
+				valid ++;
+			}
+		}
+
+		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		exit(0);
-	} else if(strcmp(message_recu,"exitall") == 0) {
-	printf("EXIT- ALL\n");
-	close(udp_descripteur);
-	pid[i] = 0;
-	port[connected - 6000] = 0;
-	kill(getppid(), SIGINT);
-	exit(0);
-} */
-}
+	}
 
 
 for(int x=0; x<maxConnection; x++) {

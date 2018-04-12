@@ -12,14 +12,18 @@
 
 int port[maxPort]; //varie entre 6000 et 6005
 
-int connectServer(int port, int pid[maxConnection],int i);
+int connectServer(int port, int* udp_descripteur, int pid[maxConnection],int i);
 
 int initialization_socket(int port);
 
 int portDispo(char port[4]);
 
 
-int envoyerBinary(int sock, char nom_fichier[64]);
+int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]);
+int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff);
+int loadFile(char * buff, char nom_fichier[64]);
+
+char *initBuff();
 int receive(int sock, char nom_fichier[64]);
 
 
