@@ -59,9 +59,9 @@ int connectServer(int port, int pid[maxConnection], int i) {
 		}
 
 		// CONTINUER SEULEMENT LORSQUE LE FILS EST PRET//
-		if(pause()<0){
-			perror("pause");
-		}
+		// if(pause()<0){
+		// 	perror("pause");
+		// }
 		printf("Daddy woke up\n");
 		strcpy(msg, "SYN-ACK");
 		strcat(msg, porti);

@@ -18,13 +18,16 @@ struct sockaddr_in addr_client;
 int taille_addr_client = sizeof(addr_client);
 
 void handle_signal() {
+
+	printf("SIGNAL HANDLE\n");
+
 	if(pere != 0) {
 		sendto(udp_descripteur, "FIN", 4, 0,(struct sockaddr *)&addr_client, (socklen_t)taille_addr_client);
 		close(udp_descripteur);
 	} else {
 		sleep(1);
 	}
-	exit(0);
+		printf("SIGNAL HANDLE END\n");
 }
 
 
