@@ -76,6 +76,7 @@ int main(int argc, char **argv)
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 10;
+
 		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
 			perror("Error");
 		}
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
 		while(valid != n_seg){
 			envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,valid,buffer);
 			if(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-				if(strcmp(message_recu,"ACK") > 0){
+				if(strcmp(message_recu,"ACK") > 0){rcv_sock
 					printf("Recu : %s\n",message_recu);
 					ack = atoi(&message_recu[3]) +1;
 					if(ack<valid) valid = ack;
