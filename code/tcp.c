@@ -19,29 +19,7 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 	strcpy(message_recu, "");
 
 	/*******************Creation des sockets --- UDP -- CONNECTION ***************************/
-	int udp_connection = socket(AF_INET, SOCK_DGRAM, 0); //on crée la socket UDP
-	if(udp_connection < 0) {
-		printf("Erreur, socket UDP connection non crée\n");
-		return 0;
-	} else {
-		printf("Descripteur UDP-connection = %d\n", udp_connection);
-
-		/*Pour faire en sorte que la socket ne soit pas bloquée*/
-		int reuse = 1;
-		setsockopt(udp_connection, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-
-		/*pour la remise à zero de la variable*/
-		struct sockaddr_in my_addr;
-		memset((char*)&my_addr, 0, sizeof(my_addr));
-
-
-		/*Initialisation socket addresse*/
-		my_addr.sin_family = AF_INET;
-		my_addr.sin_port = htons(port);
-		my_addr.sin_addr.s_addr = htons(INADDR_ANY);	//pour le serveur
-
-		bind(udp_connection, (struct sockaddr*)&my_addr, sizeof(my_addr));
-	}
+	int udp_connection = initialization_socket(port);
 
 	/********************CONNECTION**********************/
 
@@ -57,28 +35,7 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 		if(pid[i]==0){
 
 			/*******************Creation des sockets --- UDP ON EST LE FILS ***************************/
-			*udp_descripteur = socket(AF_INET, SOCK_DGRAM, 0); //on crée la socket UDP
-			if(*udp_descripteur < 0) {
-				printf("Erreur, socket UDP non crée\n");
-			} else {
-				printf("Descripteur prive %d\n", *udp_descripteur);
-
-				/*Pour faire en sorte que la socket ne soit pas bloquée*/
-				int reuse = 1;
-				setsockopt(*udp_descripteur, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
-
-				/*pour la remise à zero de la variable*/
-				struct sockaddr_in my_addrUDP;
-				memset((char*)&my_addrUDP, 0, sizeof(my_addrUDP));
-
-
-				/*Initialisation socket addresse*/
-				my_addrUDP.sin_family = AF_INET;
-				my_addrUDP.sin_port = htons(portSocket);
-				my_addrUDP.sin_addr.s_addr = addr_client.sin_addr.s_addr;
-
-				bind(*udp_descripteur, (struct sockaddr*)&my_addrUDP, sizeof(my_addrUDP));
-			}
+			*udp_descripteur = initialization_socket(portSocket);
 			printf("Fin boucle init fils\n");
 			kill(getppid(),SIGUSR1);
 			return portSocket;
@@ -104,7 +61,6 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 	return 0;
 }
 
-
 int portDispo(char porti[4]) {
 	int i;
 	for(i=0; i<maxPort; i++) {
@@ -116,7 +72,6 @@ int portDispo(char porti[4]) {
 	}
 	return 1;
 }
-
 
 int initialization_socket(int port) {
 	/*******************Creation des sockets --- UDP -- CONNECTION ***************************/
@@ -147,8 +102,6 @@ int initialization_socket(int port) {
 	return -1;
 }
 
-
-
 int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 	int i;
 	int num_segment = 0;
@@ -168,7 +121,7 @@ int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 		snprintf(message,7,"%06d",i);
 		printf("Entete message : %s\n",message);
 		strcat(message,buffer[i]);
-	//	printf("Message final :\n%s\n--------------------\n",message);
+		//	printf("Message final :\n%s\n--------------------\n",message);
 		if(sendto(sock, message, 1024,0,addr,sizeof(*addr))==-1){
 			printf("Error to send i %d",i);
 			perror("send");
@@ -306,5 +259,25 @@ int receive(int sock, char nom_fichier[64]) {
 	return -1;
 }
 
+
+
+
+
+int max(int x, int y) {
+	if(x < y) {
+		return y;
+	} else {
+		return x;
+	}
+}
+void remiseAZero(int pid[maxConnection]) {
+	int i;
+	for(i=0; i<maxConnection; i++) {
+		pid[i] = 0;
+	}
+}
 //ORDRE DE RECEPTION
 //ACK -> SLOW-START
+//slow start : envoie du premier paquet : détermination du RTT (temps le plus court)
+//ensuite on envoie deux paquets, puis 4, 8, 16 etc... si on ne reçoit pas l'ack dans le temps de RTT, on divise par deux
+//à l'approche de la fenêtre (comment trouver la taille de la fenêtre?!?) on augmente 1 par 1

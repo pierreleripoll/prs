@@ -67,10 +67,11 @@ int main(int argc, char **argv)
 	/********************* LANCEMENT BOUCLE INFINIE - PROGRAMME **************/
 	if(connected != 0) {
 		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
-		/********CONNECTION REUSSI *******************/
+		/********CONNECTION, NOM DU FICHIER A ENVOER *******************/
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
 
+		/******DEBUT DE CONNECTION************/
 		int valid = 0;
 		char * buffer = initBuff();
 		struct timeval tv;
@@ -81,6 +82,7 @@ int main(int argc, char **argv)
 		}
 		int n_seg = loadFile(buffer,message_recu);
 		int ack = 0;
+		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		while(valid != n_seg){
 			envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,valid,buffer);
 			if(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){

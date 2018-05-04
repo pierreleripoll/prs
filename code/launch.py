@@ -10,7 +10,7 @@ output_file= "output.txt"
 
 #name= server_name.split("-")
 #suffix= name[0][-2:]
-suffix="1"
+suffix="2"
 
 client_name= "client"+suffix
 
@@ -38,3 +38,8 @@ output.close()
 
 remove_command= "rm "+ copy_file_name
 os.system(remove_command)
+
+kill_command= "killall server"
+os.system(kill_command)
+kill_command= "killall client*"
+os.system(kill_command)

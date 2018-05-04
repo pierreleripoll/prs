@@ -18,13 +18,15 @@ int initialization_socket(int port);
 
 int portDispo(char port[4]);
 
-
 int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]);
 int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff);
 int loadFile(char * buff, char nom_fichier[64]);
 
 char *initBuff();
 int receive(int sock, char nom_fichier[64]);
+
+int max(int x, int y);
+void remiseAZero(int pid[maxConnection]);
 
 
 
