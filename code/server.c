@@ -72,16 +72,22 @@ int main(int argc, char **argv)
 	if(connected != 0) {
 		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		temps = clock();
-		printf("CLOCK=%ld\n",temps);
 		/********CONNECTION REUSSI *******************/
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
 
 		int valid = 0, pointeur = 1;
-		char * buffer = initBuff();
+
 		struct timeval tv;
 		tv.tv_sec = 0;
-		tv.tv_usec = 10;
+		tv.tv_usec = 1000;
+
+		struct stat sb;
+		stat(message_recu,&sb);
+		int sizeFile = sb.st_size;
+
+		char * buffer = initBuff(sizeFile);
+
 
 		int nPacketsSend = 0;
 
@@ -91,12 +97,10 @@ int main(int argc, char **argv)
 		int n_seg = loadFile(buffer,message_recu)+1;
 		//FILE *fp ;
 		//fp = fopen("out.txt","wb");
-		struct stat sb;
-		stat(message_recu,&sb);
-		int sizeFile = sb.st_size;
+
 
 		int ack = 0;
-		int swnd = 1;
+		int swnd = 16;
 
 		while(valid < n_seg){
 			printf("SWND=%d VALID=%d ACK=%d\n",swnd,valid,ack);
@@ -112,20 +116,22 @@ int main(int argc, char **argv)
 					//printf("Recu : %s\n",message_recu);
 					if(atoi(&message_recu[3])>ack) ack = atoi(&message_recu[3]);
 					printf("ACK %d\n",ack);
+					if(ack==n_seg) break;
 				//}
 			}
-			if(ack == valid+swnd)		swnd = swnd*2;
+			if(ack==n_seg) break;
+			if(ack == valid+swnd)		swnd = swnd*4;
 			else swnd = swnd/2;
 			valid = ack;
 			if(swnd<1) swnd =1;
 		}
 
-		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
+		sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		printf("%d packets send\n",nPacketsSend);
 		//fclose(fp);
 		temps=clock()-temps;
-		printf("CLOCK =%ld\n",clock());
-		printf("CLOCKS_PER_SEC =%ld\n",CLOCKS_PER_SEC);
+		//printf("CLOCK =%ld\n",clock());
+		//printf("CLOCKS_PER_SEC =%ld\n",CLOCKS_PER_SEC);
 		double realTime = (double)temps/CLOCKS_PER_SEC;
 		printf("TIME = %.6f\nDEBIT = %.2fko/s\n",realTime,(double) sizeFile/(realTime*1000));
 		exit(0);

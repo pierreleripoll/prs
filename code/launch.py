@@ -32,7 +32,7 @@ statinfo= os.stat(copy_file_name)
 
 time.sleep(1)
 
-output.write(str(server_name)+" "+ str(statinfo.st_size)+ " "+ str(delta)+ " "+ str(statinfo.st_size/delta)+ "\n")
+output.write(str(server_name)+" "+ str(statinfo.st_size)+ " "+ str(delta)+ " "+ str(statinfo.st_size/delta)+ " "+str(client_name)+"\n")
 
 output.close()
 

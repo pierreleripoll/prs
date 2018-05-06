@@ -143,7 +143,7 @@ int loadFile(char * buff, char nom_fichier[64]){
 	stat(nom_fichier,&sb);
 	printf("File size : %ld\n",sb.st_size);
 	//	printf("***ENVOIE***\n");
-	num_segment = fread(buff,TAILLE_UTILE,1024,fichier);
+	num_segment = fread(buff,TAILLE_UTILE,sb.st_size/TAILLE_UTILE,fichier);
 	if ( ferror( fichier ) != 0 ) {
 			fputs("Error reading file", stderr);
 			perror("fread");
@@ -159,27 +159,12 @@ int loadFile(char * buff, char nom_fichier[64]){
 	return num_segment;
 }
 
-int loadFileChar(char *buff,char nom_fichier[64]){
-	int num_segment = 0;
-	buff = initBuff();
-	FILE *fp = fopen(nom_fichier, "r");
-	if (fp != NULL) {
-	    size_t newLen = fread(buff, sizeof(char), TAILLE_UTILE*1024, fp);
-	    if ( ferror( fp ) != 0 ) {
-	        fputs("Error reading file", stderr);
-					perror("fread");
-	    } else {
-	        buff[newLen++] = '\0'; /* Just to be safe. */
-	    }
-	 	fclose(fp);
-		num_segment = newLen/(TAILLE_UTILE);
-	}
-	return num_segment;
-}
 
-char * initBuff(){
-	char * buffer = malloc(sizeof(char)* 1024 * (TAILLE_UTILE+1));
-	memset(buffer,(int)EOF,1024*(TAILLE_UTILE));
+
+char * initBuff(int sizeFile){
+	int nElem = sizeFile / (TAILLE_UTILE+1);
+	char * buffer = malloc(sizeof(char)* nElem * (TAILLE_UTILE+1));
+	memset(buffer,(int)EOF,nElem*(TAILLE_UTILE));
 	return buffer;
 }
 

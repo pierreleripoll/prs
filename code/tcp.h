@@ -4,6 +4,7 @@
 #define adresse_serveur "10.43.7.43"
 #define adresse_loopback "127.0.0.1"
 
+
 #define maxConnection 5
 #define maxPort 6
 
@@ -22,9 +23,8 @@ int portDispo(char port[4]);
 int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]);
 int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile);
 int loadFile(char * buff, char nom_fichier[64]);
-int loadFileChar(char * buff,char nom_fichier[64]);
 
-char *initBuff();
+char *initBuff(int sizeFile);
 int receive(int sock, char nom_fichier[64]);
 
 int max(int x, int y);
