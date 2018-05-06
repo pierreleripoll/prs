@@ -183,7 +183,7 @@ char * initBuff(){
 	return buffer;
 }
 
-int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff){
+int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile){
 	char message[TAILLE_MAX_SEGMENT];
 	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
 	printf("Entete : %s\n",message);
@@ -192,7 +192,7 @@ int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff)
 	int size = TAILLE_MAX_SEGMENT;
 	for(i=0;i<TAILLE_UTILE;i++){
 		message[i+TAILLE_ENTETE] = buff[i+(numSegment-1)*(TAILLE_UTILE)];
-		if (message[i+TAILLE_ENTETE]=='\FF'){
+		if (i+(numSegment-1)*(TAILLE_UTILE) == sizeFile){
 			size = i+TAILLE_ENTETE;
 			break;
 		}

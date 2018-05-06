@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
@@ -85,13 +86,15 @@ int main(int argc, char **argv)
 		int n_seg = loadFile(buffer,message_recu)+1;
 		//FILE *fp ;
 		//fp = fopen("out.txt","wb");
-
+		struct stat sb;
+		stat(message_recu,&sb);
+		int sizeFile = sb.st_size;
 
 		int ack = 0;
 
 		while(valid <= n_seg){
 			if(pointeur<=n_seg){
-				envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer);
+				envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
 				nPacketsSend++;
 				pointeur++;
 			}
