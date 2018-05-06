@@ -10,7 +10,7 @@ file_name1= sys.argv[3]
 file_name2= sys.argv[3]
 file_name3= sys.argv[3]
 file_name4= sys.argv[3]
-output_file= "/home/dracot/Documents/TC2017/prs/TP/code/output.txt"
+output_file= "output.txt"
 
 servers= glob.glob("./server")
 

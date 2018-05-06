@@ -94,9 +94,11 @@ int main(int argc, char **argv)
 
 		while(valid <= n_seg){
 			if(pointeur<=n_seg){
+				if(pointeur<valid) pointeur =valid;
 				envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
 				nPacketsSend++;
 				pointeur++;
+
 			}
 			else{
 				pointeur = valid;

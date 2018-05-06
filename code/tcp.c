@@ -197,7 +197,7 @@ int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,
 			break;
 		}
 	}
-	printf("Message complet : %s\n",message);
+	//printf("Message complet : %s\n",message);
 	if(sendto(sock, message, size,0,addr,sizeof(*addr))==-1){
 		printf("Error to send i %d",numSegment);
 		perror("sendto");
