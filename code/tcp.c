@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "tcp.h"
@@ -108,12 +109,12 @@ int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 
 	FILE *fichier;
 	fichier = fopen(nom_fichier,"rb");
-	char buffer[1024][TAILLE_MAX_SEGMENT-TAILLE_ENTETE];
+	char buffer[1024][TAILLE_UTILE];
 	//unsigned int entete[32];
 
 	printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
 	//	printf("***ENVOIE***\n");
-	num_segment = fread(buffer,1024,TAILLE_MAX_SEGMENT-TAILLE_ENTETE,fichier);
+	num_segment = fread(buffer,1024,TAILLE_UTILE,fichier);
 	char message[TAILLE_MAX_SEGMENT];
 
 	for (i=0;i<num_segment;i++){
@@ -133,31 +134,73 @@ int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 }
 
 int loadFile(char * buff, char nom_fichier[64]){
-	int num_segment = 0;
+	size_t num_segment = 0;
 
 	FILE *fichier;
 	fichier = fopen(nom_fichier,"rb");
 	printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
+	struct stat sb;
+	stat(nom_fichier,&sb);
+	printf("File size : %ld\n",sb.st_size);
 	//	printf("***ENVOIE***\n");
-	num_segment = fread(buff,1024,TAILLE_MAX_SEGMENT-TAILLE_ENTETE,fichier);
+	num_segment = fread(buff,TAILLE_UTILE,1024,fichier);
+	if ( ferror( fichier ) != 0 ) {
+			fputs("Error reading file", stderr);
+			perror("fread");
+	}
+	fclose(fichier);
+	printf("Buffer size : %zu TAILLE_UTILE = %d\n",num_segment,TAILLE_UTILE);
+	//num_segment=num_segment/TAILLE_UTILE;
+
+	printf("%zu segments\n",num_segment+1);
+	//printf("Buffer : %s\n",buff);
+
+
+	return num_segment;
+}
+
+int loadFileChar(char *buff,char nom_fichier[64]){
+	int num_segment = 0;
+	buff = initBuff();
+	FILE *fp = fopen(nom_fichier, "r");
+	if (fp != NULL) {
+	    size_t newLen = fread(buff, sizeof(char), TAILLE_UTILE*1024, fp);
+	    if ( ferror( fp ) != 0 ) {
+	        fputs("Error reading file", stderr);
+					perror("fread");
+	    } else {
+	        buff[newLen++] = '\0'; /* Just to be safe. */
+	    }
+	 	fclose(fp);
+		num_segment = newLen/(TAILLE_UTILE);
+	}
 	return num_segment;
 }
 
 char * initBuff(){
-	char * buffer = malloc(sizeof(char)* 1024 * (TAILLE_MAX_SEGMENT-TAILLE_ENTETE));
+	char * buffer = malloc(sizeof(char)* 1024 * (TAILLE_UTILE+1));
+	memset(buffer,(int)EOF,1024*(TAILLE_UTILE));
 	return buffer;
 }
 
 int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff){
 	char message[TAILLE_MAX_SEGMENT];
-
-	snprintf(message,7,"%06d",numSegment);
+	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
 	printf("Entete : %s\n",message);
-	strcat(message,buff);
-
-	if(sendto(sock, message, 1024,0,addr,sizeof(*addr))==-1){
+	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
+	int i;
+	int size = TAILLE_MAX_SEGMENT;
+	for(i=0;i<TAILLE_UTILE;i++){
+		message[i+TAILLE_ENTETE] = buff[i+(numSegment-1)*(TAILLE_UTILE)];
+		if (message[i+TAILLE_ENTETE]=='\FF'){
+			size = i+TAILLE_ENTETE;
+			break;
+		}
+	}
+	printf("Message complet : %s\n",message);
+	if(sendto(sock, message, size,0,addr,sizeof(*addr))==-1){
 		printf("Error to send i %d",numSegment);
-		perror("send");
+		perror("sendto");
 		return -1;
 	}
 	return 1;

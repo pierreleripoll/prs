@@ -71,31 +71,47 @@ int main(int argc, char **argv)
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
 
-		int valid = 0;
+		int valid = 0, pointeur = 1;
 		char * buffer = initBuff();
 		struct timeval tv;
 		tv.tv_sec = 0;
 		tv.tv_usec = 10;
 
+		int nPacketsSend = 0;
+
 		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
 			perror("Error");
 		}
-		int n_seg = loadFile(buffer,message_recu);
+		int n_seg = loadFile(buffer,message_recu)+1;
+		//FILE *fp ;
+		//fp = fopen("out.txt","wb");
+
+
 		int ack = 0;
-		while(valid != n_seg){
-			envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,valid,buffer);
+
+		while(valid <= n_seg){
+			if(pointeur<=n_seg){
+				envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer);
+				nPacketsSend++;
+				pointeur++;
+			}
+			else{
+				pointeur = valid;
+			}
+
 			if(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-				if(strcmp(message_recu,"ACK") > 0){rcv_sock
+				if(strcmp(message_recu,"ACK") > 0){
 					printf("Recu : %s\n",message_recu);
 					ack = atoi(&message_recu[3]) +1;
-					if(ack<valid) valid = ack;
+					if(ack>valid) valid = ack;
+
 				}
-			} else {
-				valid ++;
 			}
 		}
 
 		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
+		printf("%d packets send\n",nPacketsSend);
+		//fclose(fp);
 		exit(0);
 	}
 

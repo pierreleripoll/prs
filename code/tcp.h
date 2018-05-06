@@ -7,8 +7,9 @@
 #define maxConnection 5
 #define maxPort 6
 
-#define TAILLE_MAX_SEGMENT 512
+#define TAILLE_MAX_SEGMENT 1024
 #define TAILLE_ENTETE 6
+#define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
 int port[maxPort]; //varie entre 6000 et 6005
 
@@ -21,6 +22,7 @@ int portDispo(char port[4]);
 int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]);
 int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff);
 int loadFile(char * buff, char nom_fichier[64]);
+int loadFileChar(char * buff,char nom_fichier[64]);
 
 char *initBuff();
 int receive(int sock, char nom_fichier[64]);
