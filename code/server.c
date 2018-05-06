@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/select.h>
+#include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -33,6 +34,8 @@ void handle_signal() {
 
 int main(int argc, char **argv)
 {
+	clock_t temps;
+	srand(time(NULL));
 	int portUsr, i, connected, pid[maxConnection];
 	i=0;
 	pere = 0;
@@ -68,6 +71,8 @@ int main(int argc, char **argv)
 	/********************* LANCEMENT BOUCLE INFINIE - PROGRAMME **************/
 	if(connected != 0) {
 		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
+		temps = clock();
+		printf("CLOCK=%ld\n",temps);
 		/********CONNECTION REUSSI *******************/
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
@@ -91,32 +96,38 @@ int main(int argc, char **argv)
 		int sizeFile = sb.st_size;
 
 		int ack = 0;
+		int swnd = 1;
 
-		while(valid <= n_seg){
-			if(pointeur<=n_seg){
-				if(pointeur<valid) pointeur =valid;
-				envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
-				nPacketsSend++;
-				pointeur++;
-
-			}
-			else{
-				pointeur = valid;
-			}
-
-			if(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-				if(strcmp(message_recu,"ACK") > 0){
-					printf("Recu : %s\n",message_recu);
-					ack = atoi(&message_recu[3]) +1;
-					if(ack>valid) valid = ack;
-
+		while(valid < n_seg){
+			printf("SWND=%d VALID=%d ACK=%d\n",swnd,valid,ack);
+			for(pointeur=valid+1;pointeur<valid+1+swnd;pointeur++){
+				if(pointeur<=n_seg){
+					envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
+					nPacketsSend++;
 				}
+			 }
+
+			while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
+				//if(strcmp(message_recu,"ACK") > 0){
+					//printf("Recu : %s\n",message_recu);
+					if(atoi(&message_recu[3])>ack) ack = atoi(&message_recu[3]);
+					printf("ACK %d\n",ack);
+				//}
 			}
+			if(ack == valid+swnd)		swnd = swnd*2;
+			else swnd = swnd/2;
+			valid = ack;
+			if(swnd<1) swnd =1;
 		}
 
 		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		printf("%d packets send\n",nPacketsSend);
 		//fclose(fp);
+		temps=clock()-temps;
+		printf("CLOCK =%ld\n",clock());
+		printf("CLOCKS_PER_SEC =%ld\n",CLOCKS_PER_SEC);
+		double realTime = (double)temps/CLOCKS_PER_SEC;
+		printf("TIME = %.6f\nDEBIT = %.2fko/s\n",realTime,(double) sizeFile/(realTime*1000));
 		exit(0);
 	}
 

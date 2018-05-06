@@ -7,7 +7,7 @@
 #define maxConnection 5
 #define maxPort 6
 
-#define TAILLE_MAX_SEGMENT 1024
+#define TAILLE_MAX_SEGMENT 1500
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 

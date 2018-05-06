@@ -10,7 +10,7 @@ output_file= "output.txt"
 
 #name= server_name.split("-")
 #suffix= name[0][-2:]
-suffix="2"
+suffix="1"
 
 client_name= "client"+suffix
 
