@@ -5,12 +5,13 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/select.h>
+#include <time.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include "tcp.h"
-
 
 int udp_descripteur, pere;
 
@@ -71,29 +72,70 @@ int main(int argc, char **argv)
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
 
+		struct stat sb;
+		stat(message_recu,&sb);
+		int sizeFile = sb.st_size;
+
 		/******DEBUT DE CONNECTION************/
-		int valid = 0;
-		char * buffer = initBuff();
+		int valid = 0, pointeur=1;
+
+		char * buffer = initBuff(sizeFile);
 		struct timeval tv;
 		tv.tv_sec = 0;
-		tv.tv_usec = 10;
+		tv.tv_usec = 100;
+
+
+		clock_t startMSS, endMSS;
+    double cpu_time_used;
+
+		int nPacketsSend = 0;
+
+
 		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
 			perror("Error");
 		}
 		int n_seg = loadFile(buffer,message_recu);
 		int ack = 0;
-		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
-		while(valid != n_seg){
-			envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,valid,buffer);
-			if(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-				if(strcmp(message_recu,"ACK") > 0){
-					printf("Recu : %s\n",message_recu);
-					ack = atoi(&message_recu[3]) +1;
-					if(ack<valid) valid = ack;
+		int swnd = 16;
+		int premierPassage = 0;
+		double MSStotal = 0;
+		int nombre=1;
+		double coef = 2;
+
+		while(valid < n_seg){
+			printf("SWND=%d VALID=%d ACK=%d\n",swnd,valid,ack);
+			for(pointeur=valid+1;pointeur<valid+1+swnd;pointeur++){
+				if(pointeur<=n_seg){
+					envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
+					nPacketsSend++;
 				}
-			} else {
-				valid ++;
+			 }
+			 startMSS = clock();
+
+			while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
+				//if(strcmp(message_recu,"ACK") > 0){
+					//printf("Recu : %s\n",message_recu);
+					if(premierPassage==0) {
+						endMSS = clock();
+						premierPassage=1;
+						double MSS = ((double) (endMSS - startMSS)) / CLOCKS_PER_SEC * 1000000;
+						MSStotal += MSS;
+						tv.tv_usec = MSStotal / nombre;
+						nombre++;
+						printf("MSS = %lf et moyenne = %ld\n",MSS,tv.tv_usec);
+            setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
+					}
+					if(atoi(&message_recu[3])>ack) ack = atoi(&message_recu[3]);
+					printf("ACK %d\n",ack);
+					if(ack==n_seg) break;
+				//}
 			}
+			premierPassage=0;
+			if(ack==n_seg) break;
+			if(ack == valid+swnd)		swnd = swnd*4;
+			else swnd = swnd/2;
+			valid = ack;
+			if(swnd<1) swnd =1;
 		}
 
 		sendto(udp_descripteur, "FIN", 1024,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
