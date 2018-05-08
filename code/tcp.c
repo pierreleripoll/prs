@@ -171,7 +171,7 @@ char * initBuff(int sizeFile){
 int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile){
 	char message[TAILLE_MAX_SEGMENT];
 	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
-	//printf("Entete : %s\n",message);
+	printf("%s\n",message);
 	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
 	int i;
 	int size = TAILLE_MAX_SEGMENT;

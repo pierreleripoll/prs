@@ -30,17 +30,18 @@ void handle_signal() {
 		printf("FATHER CAUGHT SIGNAL\n");
 	}
 	printf("SIGNAL HANDLE END\n");
+
 }
 
 int main(int argc, char **argv)
 {
-	clock_t temps;
-	srand(time(NULL));
+	struct timespec requestStart, requestEnd;
 	int portUsr, i, connected, pid[maxConnection];
 	i=0;
 	pere = 0;
 	remiseAZero(pid);
 	signal(SIGUSR1, handle_signal);
+	//signal(SIGINT,handle_signal);
 	connected = 0;
 
 	/*******************Arguments lors du lancement du programme********************/
@@ -71,8 +72,9 @@ int main(int argc, char **argv)
 	/********************* LANCEMENT BOUCLE INFINIE - PROGRAMME **************/
 	if(connected != 0) {
 		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
-		temps = clock();
 		/********CONNECTION REUSSI *******************/
+		clock_gettime(CLOCK_REALTIME, &requestStart);
+
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		printf("on a recu : %s\n", message_recu);
 
@@ -80,7 +82,7 @@ int main(int argc, char **argv)
 
 		struct timeval tv;
 		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
+		tv.tv_usec = 20000;
 
 		struct stat sb;
 		stat(message_recu,&sb);
@@ -109,6 +111,7 @@ int main(int argc, char **argv)
 					envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
 					nPacketsSend++;
 				}
+				else break;
 			 }
 
 			while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
@@ -129,11 +132,15 @@ int main(int argc, char **argv)
 		sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		printf("%d packets send\n",nPacketsSend);
 		//fclose(fp);
-		temps=clock()-temps;
+		clock_gettime(CLOCK_REALTIME, &requestEnd);
+
 		//printf("CLOCK =%ld\n",clock());
 		//printf("CLOCKS_PER_SEC =%ld\n",CLOCKS_PER_SEC);
-		double realTime = (double)temps/CLOCKS_PER_SEC;
+		double realTime = ( requestEnd.tv_sec - requestStart.tv_sec )
+		  + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / 1E9;
+
 		printf("TIME = %.6f\nDEBIT = %.2fko/s\n",realTime,(double) sizeFile/(realTime*1000));
+		free(buffer);
 		exit(0);
 	}
 
