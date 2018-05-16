@@ -10,6 +10,13 @@
 #include <arpa/inet.h>
 #include "tcp.h"
 
+
+ Buff_t * initBufferCircular(int size){
+ 	Buff_t * bufferCircular = malloc(sizeof(Buff_t)*size);
+	memset(bufferCircular,(int) '\0',size*sizeof(Buff_t));
+	return bufferCircular;
+}
+
 int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i) {
 	struct sockaddr_in addr_client;
 	int taille_addr_client = sizeof(addr_client);

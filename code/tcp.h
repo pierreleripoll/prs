@@ -30,10 +30,14 @@ int receive(int sock, char nom_fichier[64]);
 int max(int x, int y);
 void remiseAZero(int pid[maxConnection]);
 
-struct Buff {
+
+typedef struct Buff {
   int numPck;
   char buffer[TAILLE_UTILE];
   int timeWait;
-};
+} Buff_t;
+
+Buff_t * initBufferCircular(int size);
+
 
 #endif
