@@ -18,6 +18,12 @@ int udp_descripteur, pere;
 struct sockaddr_in addr_client;
 int taille_addr_client = sizeof(addr_client);
 
+double get_time_ms() {
+	struct timeval t;
+	gettimeofday(&t, NULL);
+	return (t.tv_sec + (t.tv_usec / 1000000.0)) * 1000.0;
+}
+
 void handle_signal() {
 	printf("SIGNAL HANDLE\n");
 
@@ -80,20 +86,36 @@ int main(int argc, char **argv)
 		int valid = 0, pointeur=1;
 
 		char * buffer = initBuff(sizeFile);
-		struct timeval tv;
-		tv.tv_sec = 0;
-		tv.tv_usec = 100;
 
+		/***************Pour faire en sorte que la socket ne soit pas bloquée**********************/
+		int reuse = 1;
+		setsockopt(descripteur, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
 
 		clock_t startMSS, endMSS;
-    double cpu_time_used;
+		double cpu_time_used;
 
 		int nPacketsSend = 0;
+		int SIZE = 10;
 
+		int pid = fork();
+		if(pid == 0) {
+			pidTime = fork();
+			if(pidTime == 0) { //TIMER
+				double timeActuel = get_time_ms();
+				if(timeActuel - get_time_ms() >= 10) {
+					for(int i=0; i<SNWD; i++) {
+						Buff_t[i].timeWait--;
+					}
+				}
+			} else {
 
-		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-			perror("Error");
+			}
+		} else {
+
 		}
+
+
+
 		int n_seg = loadFile(buffer,message_recu);
 		int ack = 0;
 		int swnd = 16;
@@ -109,25 +131,25 @@ int main(int argc, char **argv)
 					envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
 					nPacketsSend++;
 				}
-			 }
-			 startMSS = clock();
+			}
+			startMSS = clock();
 
 			while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
 				//if(strcmp(message_recu,"ACK") > 0){
-					//printf("Recu : %s\n",message_recu);
-					if(premierPassage==0) {
-						endMSS = clock();
-						premierPassage=1;
-						double MSS = ((double) (endMSS - startMSS)) / CLOCKS_PER_SEC * 1000000;
-						MSStotal += MSS;
-						tv.tv_usec = MSStotal / nombre;
-						nombre++;
-						printf("MSS = %lf et moyenne = %ld\n",MSS,tv.tv_usec);
-            setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
-					}
-					if(atoi(&message_recu[3])>ack) ack = atoi(&message_recu[3]);
-					printf("ACK %d\n",ack);
-					if(ack==n_seg) break;
+				//printf("Recu : %s\n",message_recu);
+				if(premierPassage==0) {
+					endMSS = clock();
+					premierPassage=1;
+					double MSS = ((double) (endMSS - startMSS)) / CLOCKS_PER_SEC * 1000000;
+					MSStotal += MSS;
+					tv.tv_usec = MSStotal / nombre;
+					nombre++;
+					printf("MSS = %lf et moyenne = %ld\n",MSS,tv.tv_usec);
+					setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv));
+				}
+				if(atoi(&message_recu[3])>ack) ack = atoi(&message_recu[3]);
+				printf("ACK %d\n",ack);
+				if(ack==n_seg) break;
 				//}
 			}
 			premierPassage=0;

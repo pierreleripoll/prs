@@ -13,6 +13,7 @@
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
 #define SNWD 10
+#define RTT 100
 
 int port[maxPort]; //varie entre 6000 et 6005
 
