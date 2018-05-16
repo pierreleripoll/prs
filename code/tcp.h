@@ -12,6 +12,8 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
+#define SNWD 10
+
 int port[maxPort]; //varie entre 6000 et 6005
 
 int connectServer(int port, int* udp_descripteur, int pid[maxConnection],int i);
