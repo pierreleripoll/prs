@@ -18,7 +18,7 @@ void *functionThreadSend(void* arg) {
   while(1) {
     for(i=0;i<SNWD;i++){
       if(bufferC->buffer[i].timeWait <= 0) {
-        bufferC->buffer[i].timeWait = 5000;
+        bufferC->buffer[i].timeWait = RTT;
         printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
       }
     }

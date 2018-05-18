@@ -12,8 +12,8 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define SNWD 100
-#define RTT 100
+#define SNWD 10
+#define RTT 3000
 
 typedef struct Buff {
   int numPck;
