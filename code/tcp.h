@@ -15,6 +15,7 @@
 #define SNWD 10
 #define RTT 100
 
+
 int port[maxPort]; //varie entre 6000 et 6005
 
 int connectServer(int port, int* udp_descripteur, int pid[maxConnection],int i);
@@ -33,12 +34,17 @@ int receive(int sock, char nom_fichier[64]);
 int max(int x, int y);
 void remiseAZero(int pid[maxConnection]);
 
+void *functionThreadSend(void* arg);
+void *functionThreadReceive(void* arg);
+void *functionThreadTime(void* arg);
 
 typedef struct Buff {
   int numPck;
   char buffer[TAILLE_UTILE];
   int timeWait;
 } Buff_t;
+
+pthread_mutex_t mutexPack;
 
 Buff_t * initBufferCircular(int size);
 
