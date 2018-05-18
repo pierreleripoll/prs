@@ -8,12 +8,19 @@
 #include <sys/stat.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 #include "tcp.h"
+
 
 
  Buff_t * initBufferCircular(int size){
  	Buff_t * bufferCircular = malloc(sizeof(Buff_t)*size);
 	memset(bufferCircular,(int) '\0',size*sizeof(Buff_t));
+	int i;
+	for(i=0;i<size;i++){
+		bufferCircular[i].conditionTime = PTHREAD_COND_INITIALIZER;
+		bufferCircular[i].mutexTime = PTHREAD_MUTEX_INITIALIZER;
+	}
 	return bufferCircular;
 }
 
