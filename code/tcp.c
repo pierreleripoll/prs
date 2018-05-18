@@ -12,9 +12,14 @@
 #include "tcp.h"
 
 
+
  Buff_t * initBufferCircular(int size){
  	Buff_t * bufferCircular = malloc(sizeof(Buff_t)*size);
 	memset(bufferCircular,(int) '\0',size*sizeof(Buff_t));
+	int i;
+	for(i=0;i<size;i++){
+
+	}
 	return bufferCircular;
 }
 

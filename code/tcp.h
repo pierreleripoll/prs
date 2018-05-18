@@ -42,6 +42,7 @@ typedef struct Buff {
   int numPck;
   char buffer[TAILLE_UTILE];
   int timeWait;
+
 } Buff_t;
 
 pthread_mutex_t mutexPack;

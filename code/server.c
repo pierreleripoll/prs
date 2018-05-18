@@ -21,7 +21,25 @@ int udp_descripteur, pere;
 struct sockaddr_in addr_client;
 int taille_addr_client = sizeof(addr_client);
 
-void *thread(void *arg)
+void *threadEnvoi(void *arg)
+{
+    printf("Nous sommes dans le thread.\n");
+
+    /* Pour enlever le warning */
+    (void) arg;
+    pthread_exit(NULL);
+}
+
+void *threadAck(void *arg)
+{
+    printf("Nous sommes dans le thread.\n");
+
+    /* Pour enlever le warning */
+    (void) arg;
+    pthread_exit(NULL);
+}
+
+void *threadTime(void *arg)
 {
     printf("Nous sommes dans le thread.\n");
 
@@ -116,7 +134,8 @@ int main(int argc, char **argv)
 		int ack = 0;
 		int swnd = 16;
 
-
+		int start = 0;
+		int stop = 0;
 //------------------------------------------------------------------------------------------------
 //************************************************************************************************
 //BEGIN TRANSMISSION
@@ -126,6 +145,7 @@ int main(int argc, char **argv)
 		pthread_t threadAck;
 		pthread_t threadTime;
 
+		printf("Avant création des threads\n");
 		if(pthread_create(&threadEnvoi, NULL, thread, NULL) == -1) {
 		perror("pthread_create");
 		return EXIT_FAILURE;
@@ -138,6 +158,7 @@ int main(int argc, char **argv)
 		perror("pthread_create");
 		return EXIT_FAILURE;
 		}
+		printf("Après création des threads\n");
 
 
 		// while(valid < n_seg){
