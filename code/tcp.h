@@ -38,8 +38,7 @@ typedef struct Buff {
   int numPck;
   char buffer[TAILLE_UTILE];
   int timeWait;
-  pthread_cond_t conditionTime; /* Création de la condition */
-  pthread_mutex_t mutexTime; /* Création du mutex */  
+
 } Buff_t;
 
 Buff_t * initBufferCircular(int size);
