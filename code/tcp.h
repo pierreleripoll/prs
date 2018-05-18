@@ -12,9 +12,24 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define SNWD 10
+#define SNWD 100
 #define RTT 100
 
+typedef struct Buff {
+  int numPck;
+  char buffer[TAILLE_UTILE];
+  int timeWait;
+  pthread_t threadTime;
+
+} Buff_t;
+
+typedef struct bufferCircular{
+  Buff_t * buffer;
+  int start;
+  int stop;
+  pthread_mutex_t mutexStart;
+  pthread_mutex_t mutexStop;
+} BufferCircular_t;
 
 int port[maxPort]; //varie entre 6000 et 6005
 
@@ -38,16 +53,12 @@ void *functionThreadSend(void* arg);
 void *functionThreadReceive(void* arg);
 void *functionThreadTime(void* arg);
 
-typedef struct Buff {
-  int numPck;
-  char buffer[TAILLE_UTILE];
-  int timeWait;
+int startThreadTime(Buff_t * buff);
 
-} Buff_t;
 
-pthread_mutex_t mutexPack;
 
-Buff_t * initBufferCircular(int size);
+
+BufferCircular_t * initBufferCircular(int size);
 
 
 #endif

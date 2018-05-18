@@ -108,16 +108,23 @@ int main(int argc, char **argv)
 		printf("Debut du threading\n");
 		pthread_t threadEnvoi;
 		pthread_t threadAck;
-		pthread_t threadTime;
 
 		Buff_t *arg = malloc(sizeof(*arg));
-		pthread_mutex_init(&mutexPack, NULL);
 		arg->timeWait = 5000;
 		arg->numPck = 1;
 		//buffer.mutex = PTHREAD_MUTEX_INITIALIZER;
 		//pthread_mutex_init(buffer.mutex, NULL);
 
-		if(pthread_create(&threadEnvoi, NULL, functionThreadSend, arg) == -1) {
+		BufferCircular_t * bufferCircular = initBufferCircular(SNWD);
+		printf("Circular buffer initialized\n");
+		int i;
+		for(i=0;i<SNWD;i++){
+			bufferCircular->buffer[i].timeWait=5000;
+			startThreadTime(&(bufferCircular->buffer[i]));
+			printf("Buff %d thread time started\n",i);
+		}
+
+		if(pthread_create(&threadEnvoi, NULL, functionThreadSend, bufferCircular) == -1) {
 			perror("pthread_create");
 			return EXIT_FAILURE;
 		}
@@ -125,16 +132,13 @@ int main(int argc, char **argv)
 			perror("pthread_create");
 			return EXIT_FAILURE;
 		}
-		if(pthread_create(&threadTime, NULL, functionThreadTime, arg) == -1) {
-			perror("pthread_create");
-			return EXIT_FAILURE;
-		}
+		printf("Before threadTime timeWait ==%d\n",arg->timeWait);
+		//startThreadTime(arg);
 
 		printf("Fin déclaration du threading\n");
 
 		pthread_join(threadEnvoi, NULL);
 		pthread_join(threadAck, NULL);
-		pthread_join(threadTime, NULL);
 
 		printf("Fin du programme\n");
 /*

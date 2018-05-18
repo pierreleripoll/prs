@@ -13,15 +13,7 @@
 
 
 
- Buff_t * initBufferCircular(int size){
- 	Buff_t * bufferCircular = malloc(sizeof(Buff_t)*size);
-	memset(bufferCircular,(int) '\0',size*sizeof(Buff_t));
-	int i;
-	for(i=0;i<size;i++){
 
-	}
-	return bufferCircular;
-}
 
 int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i) {
 	struct sockaddr_in addr_client;
@@ -300,40 +292,6 @@ int receive(int sock, char nom_fichier[64]) {
 	return -1;
 }
 
-void *functionThreadSend(void* arg) {
-  Buff_t *buffer = arg;
-  while(1) {
-    if(buffer->timeWait <= 0) {
-      buffer->timeWait = 5000;
-      printf("*******TEMPS RESET %d ****************\n",buffer->timeWait);
-    }
-  }
-  return NULL;
-}
-
-void *functionThreadReceive(void* arg) {
-  Buff_t *buffer = arg;
-  while(1) {
-    sleep(1);
-    pthread_mutex_lock (&mutexPack);
-    buffer->numPck++;
-    printf("NumPack buffer : %d\n",buffer->numPck);
-    pthread_mutex_unlock(&mutexPack);
-  }
-  return NULL;
-}
-
-void *functionThreadTime(void* arg) {
-  Buff_t *buffer = arg;
-  while(1) {
-    usleep(1000);
-    if(buffer->timeWait > 0) {
-      buffer->timeWait--;
-    }
-    printf("%d\n",buffer->timeWait);
-  }
-  return NULL;
-}
 
 int max(int x, int y) {
 	if(x < y) {
