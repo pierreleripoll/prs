@@ -16,8 +16,10 @@ void *functionThreadSend(void* arg) {
   ArgThreadEnvoi_t * argT = arg;
   BufferCircular_t *bufferC = argT->bufferC;
   int sock = argT->sock;
+  int taille_buffer_circular = argT->taille_buffer_circular;
+  int rtt = argT->rtt;
   struct sockaddr *addr = argT->addr;
-
+  int *nPacketsSend = argT->nPacketsSend;
   int i, start, stop;
   while(1) {
      start=bufferC->start;
@@ -28,15 +30,16 @@ void *functionThreadSend(void* arg) {
     }
     int j=bufferC->start;
 
-    for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+    for(i=0;i<taille_buffer_circular;i++){
       //printf("TEnvoi : %d to %d\n",start,stop);
     //  printf("N buff case %d : %d\n",i,bufferC->buffer[i].numPck);
       j++;
-      if(j==TAILLE_BUFFER_CIRCULAR) j = 0;
-      if(j<stop || (start>stop && j<TAILLE_BUFFER_CIRCULAR) ){
+      if(j==taille_buffer_circular) j = 0;
+      if(j<stop || (start>stop && j<taille_buffer_circular) ){
         if(bufferC->buffer[i].timeWait <= 0) {
           envoyerSegment(sock,addr,&bufferC->buffer[i]);
-          bufferC->buffer[i].timeWait = RTT;
+          *nPacketsSend = *nPacketsSend+1;
+          bufferC->buffer[i].timeWait = rtt;
         //  printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
         }
       }
@@ -59,7 +62,7 @@ void *functionThreadTime(void* arg) {
   int *t = arg;
   printf("functionThreadTime created arg==%d\n",*t );
   while(1) {
-    usleep(1000);
+    usleep(100);
     if(*t > 0) {
       *t-=1;
       //printf("%d\n",*t);
@@ -68,9 +71,9 @@ void *functionThreadTime(void* arg) {
   return NULL;
 }
 
-BufferCircular_t * initBufferCircular(){
- Buff_t * pointeurFirstBuff = malloc(sizeof(Buff_t)*TAILLE_BUFFER_CIRCULAR);
- memset(pointeurFirstBuff,(int) '\0',TAILLE_BUFFER_CIRCULAR*sizeof(Buff_t));
+BufferCircular_t * initBufferCircular(int taille_buffer_circular){
+ Buff_t * pointeurFirstBuff = malloc(sizeof(Buff_t)*taille_buffer_circular);
+ memset(pointeurFirstBuff,(int) '\0',taille_buffer_circular*sizeof(Buff_t));
  BufferCircular_t * bufferCircular = malloc(sizeof(BufferCircular_t));
  bufferCircular->buffer = pointeurFirstBuff;
  bufferCircular->start = 0;

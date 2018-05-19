@@ -47,6 +47,18 @@ int main(int argc, char **argv)
 	//signal(SIGINT,handle_signal);
 	connected = 0;
 
+  int taille_buffer_circular = TAILLE_BUFFER_CIRCULAR;
+  int snwd = SNWD;
+  int rtt = RTT;
+
+  if(argc==4){
+     printf("ARGUMENTS TOKEN\n");
+     taille_buffer_circular = atoi(argv[1]);
+     snwd = atoi(argv[2]);
+     rtt = atoi(argv[3]);
+     printf("%d , %d , %d\n",taille_buffer_circular,snwd,rtt);
+   }
+
 	/*******************Arguments lors du lancement du programme********************/
 	if(argc == 2) {
 		portUsr = atoi(argv[1]);
@@ -107,23 +119,26 @@ int main(int argc, char **argv)
 		pthread_t threadEnvoi;
 
 
-		BufferCircular_t * bufferCircular = initBufferCircular();
+		BufferCircular_t * bufferCircular = initBufferCircular(taille_buffer_circular);
 		printf("Circular buffer initialized\n");
 		int i;
     int n_seg= 1, pointeurFile= 0 ,ack =0, ackReceived = 0;
-		for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+		for(i=0;i<taille_buffer_circular;i++){
 
       chargeBuff(&bufferFile[pointeurFile],n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
       startThreadTime(&(bufferCircular->buffer[i]));
       pointeurFile+=TAILLE_UTILE;
       n_seg++;
     }
-    bufferCircular->stop=SNWD-1;
+    bufferCircular->stop=snwd-1;
 
     ArgThreadEnvoi_t * argThreadEnvoi = malloc(sizeof(ArgThreadEnvoi_t));
     argThreadEnvoi->bufferC=bufferCircular;
     argThreadEnvoi->sock=udp_descripteur;
     argThreadEnvoi->addr=(struct sockaddr *) &addr_client;
+    argThreadEnvoi->nPacketsSend = &nPacketsSend;
+    argThreadEnvoi->rtt = rtt;
+    argThreadEnvoi->taille_buffer_circular = taille_buffer_circular;
 
 		if(pthread_create(&threadEnvoi, NULL, functionThreadSend, argThreadEnvoi) == -1) {
 			perror("pthread_create");
@@ -150,14 +165,14 @@ int main(int argc, char **argv)
         printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
 
         bufferCircular->start = bufferCircular->start +(ackReceived-ack);
-        if(bufferCircular->start>=TAILLE_BUFFER_CIRCULAR) bufferCircular->start = bufferCircular->start -TAILLE_BUFFER_CIRCULAR;
+        if(bufferCircular->start>=taille_buffer_circular) bufferCircular->start = bufferCircular->start -taille_buffer_circular;
 
           int k,j,size= 0;
-          for(k=0;k<TAILLE_BUFFER_CIRCULAR;k++){ // on cherche le début des paquets validés
+          for(k=0;k<taille_buffer_circular;k++){ // on cherche le début des paquets validés
             if(bufferCircular->buffer[k].numPck == ack+1){ // on a trouvé le paquet validé
               for(j=0;j<(ackReceived-ack);j++){
                 if(n_seg<=n_seg_total){
-                  if(k==TAILLE_BUFFER_CIRCULAR) k =0; //si jamais on est a la limite du buffer C
+                  if(k==taille_buffer_circular) k =0; //si jamais on est a la limite du buffer C
                   if(n_seg == n_seg_total) { //c'est le dernier paquet a envoyer
                     size = sizeFile - ((n_seg-1)*TAILLE_UTILE);
                     //fprintf(stderr,"LASTPAQUET SIZE : %d\n",size);
@@ -175,14 +190,14 @@ int main(int argc, char **argv)
 
           printf("ackReceived %d\n",ackReceived);
           bufferCircular->stop = bufferCircular->stop+ (ackReceived-ack);
-          if(bufferCircular->stop>=TAILLE_BUFFER_CIRCULAR) bufferCircular->stop = bufferCircular->stop -TAILLE_BUFFER_CIRCULAR;
+          if(bufferCircular->stop>=taille_buffer_circular) bufferCircular->stop = bufferCircular->stop -taille_buffer_circular;
 
           ack = ackReceived;
           if (ack>=n_seg_total) bufferCircular->stop = -1;
           printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
           printf("Etat buffer Circular :\n");
           int i;
-          for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+          for(i=0;i<taille_buffer_circular;i++){
             printf("%d : %d | ",i,bufferCircular->buffer[i].numPck);
           }
 

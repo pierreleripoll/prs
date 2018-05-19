@@ -12,9 +12,9 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define TAILLE_BUFFER_CIRCULAR 40
-#define SNWD 40
-#define RTT 5
+#define TAILLE_BUFFER_CIRCULAR 30
+#define SNWD 30
+#define RTT 10 //en dixième de milliseconde
 
 typedef struct Buff {
   int numPck;
@@ -33,6 +33,9 @@ typedef struct bufferCircular{
 } BufferCircular_t;
 
 typedef struct ArgThreadEnvoi{
+  int rtt;
+  int taille_buffer_circular;
+  int * nPacketsSend;
   BufferCircular_t * bufferC;
   int sock;
   struct sockaddr *addr;
@@ -69,7 +72,7 @@ int startThreadTime(Buff_t * buff);
 
 
 
-BufferCircular_t * initBufferCircular();
+BufferCircular_t * initBufferCircular(int taille_buffer_circular);
 
 
 #endif
