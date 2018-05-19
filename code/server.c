@@ -21,32 +21,6 @@ int udp_descripteur, pere;
 struct sockaddr_in addr_client;
 int taille_addr_client = sizeof(addr_client);
 
-void *threadEnvoi(void *arg)
-{
-    printf("Nous sommes dans le thread.\n");
-
-    /* Pour enlever le warning */
-    (void) arg;
-    pthread_exit(NULL);
-}
-
-void *threadAck(void *arg)
-{
-    printf("Nous sommes dans le thread.\n");
-
-    /* Pour enlever le warning */
-    (void) arg;
-    pthread_exit(NULL);
-}
-
-void *threadTime(void *arg)
-{
-    printf("Nous sommes dans le thread.\n");
-
-    /* Pour enlever le warning */
-    (void) arg;
-    pthread_exit(NULL);
-}
 
 void handle_signal() {
 	printf("SIGNAL HANDLE\n");
@@ -111,54 +85,122 @@ int main(int argc, char **argv)
 
 		struct timeval tv;
 		tv.tv_sec = 0;
-		tv.tv_usec = 5;
+		tv.tv_usec = 0;
 
 		struct stat sb;
 		stat(message_recu,&sb);
 		int sizeFile = sb.st_size;
 
-		char * buffer = initBuff(sizeFile);
-
-		Buff_t * bufferCircular = initBufferCircular(SNWD);
+		char * bufferFile = initBuff(sizeFile);
 
 		int nPacketsSend = 0;
 
 		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
 			perror("Error");
 		}
-		int n_seg = loadFile(buffer,message_recu)+1;
+		int n_seg_total = loadFile(bufferFile,message_recu)+1;
 		//FILE *fp ;
 		//fp = fopen("out.txt","wb");
 
 
-		int ack = 0;
-		int swnd = 16;
+    printf("Debut du threading\n");
+		pthread_t threadEnvoi;
 
-		int start = 0;
-		int stop = 0;
+
+		BufferCircular_t * bufferCircular = initBufferCircular();
+		printf("Circular buffer initialized\n");
+		int i;
+    int n_seg= 1, pointeurFile= 0 ,ack =0, ackReceived = 0;
+		for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+
+      chargeBuff(&bufferFile[pointeurFile],n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
+      startThreadTime(&(bufferCircular->buffer[i]));
+      pointeurFile+=TAILLE_UTILE;
+      n_seg++;
+    }
+    bufferCircular->stop=SNWD-1;
+
+    ArgThreadEnvoi_t * argThreadEnvoi = malloc(sizeof(ArgThreadEnvoi_t));
+    argThreadEnvoi->bufferC=bufferCircular;
+    argThreadEnvoi->sock=udp_descripteur;
+    argThreadEnvoi->addr=(struct sockaddr *) &addr_client;
+
+		if(pthread_create(&threadEnvoi, NULL, functionThreadSend, argThreadEnvoi) == -1) {
+			perror("pthread_create");
+			return EXIT_FAILURE;
+		}
+    //fprintf(stderr, "BUFFER FILE : \n%s\n\n\n",&bufferFile[(n_seg_total-1)*TAILLE_UTILE] );
+
+    while(ack != n_seg_total){
+
+    	while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
+				if(strcmp(message_recu,"ACK") > 0){
+					printf("Recu : %s\n",message_recu);
+					ackReceived = atoi(&message_recu[3]);
+					printf("ACK %d\n",ackReceived);
+					if(ackReceived>ack){
+            printf("BREAK\n");
+            break;
+
+          }
+				  }
+			}
+
+      if(ackReceived>ack){
+        printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
+
+        bufferCircular->start = bufferCircular->start +(ackReceived-ack);
+        if(bufferCircular->start>=TAILLE_BUFFER_CIRCULAR) bufferCircular->start = bufferCircular->start -TAILLE_BUFFER_CIRCULAR;
+
+          int k,j,size= 0;
+          for(k=0;k<TAILLE_BUFFER_CIRCULAR;k++){ // on cherche le début des paquets validés
+            if(bufferCircular->buffer[k].numPck == ack+1){ // on a trouvé le paquet validé
+              for(j=0;j<(ackReceived-ack);j++){
+                if(n_seg<=n_seg_total){
+                  if(k==TAILLE_BUFFER_CIRCULAR) k =0; //si jamais on est a la limite du buffer C
+                  if(n_seg == n_seg_total) { //c'est le dernier paquet a envoyer
+                    size = sizeFile - ((n_seg-1)*TAILLE_UTILE);
+                    //fprintf(stderr,"LASTPAQUET SIZE : %d\n",size);
+                  }
+                  else size = TAILLE_UTILE;
+                  chargeBuff(&bufferFile[pointeurFile],n_seg,size,&(bufferCircular->buffer[k]));
+                  n_seg++;
+                  pointeurFile+=TAILLE_UTILE;
+                  k++;
+                }
+              }
+              break;
+            }
+          }//endFOR
+
+          printf("ackReceived %d\n",ackReceived);
+          bufferCircular->stop = bufferCircular->stop+ (ackReceived-ack);
+          if(bufferCircular->stop>=TAILLE_BUFFER_CIRCULAR) bufferCircular->stop = bufferCircular->stop -TAILLE_BUFFER_CIRCULAR;
+
+          ack = ackReceived;
+          if (ack>=n_seg_total) bufferCircular->stop = -1;
+          printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
+          printf("Etat buffer Circular :\n");
+          int i;
+          for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+            printf("%d : %d | ",i,bufferCircular->buffer[i].numPck);
+          }
+
+      }//ENF IF ACKRECEVEID > ACK
+
+    } //END BOUCLE MAIN RECEIVER
+
+
+
+
+
+
+		printf("Fin déclaration du threading\n");
+
 //------------------------------------------------------------------------------------------------
 //************************************************************************************************
 //BEGIN TRANSMISSION
 
-
-		pthread_t threadEnvoi;
-		pthread_t threadAck;
-		pthread_t threadTime;
-
-		printf("Avant création des threads\n");
-		if(pthread_create(&threadEnvoi, NULL, thread, NULL) == -1) {
-		perror("pthread_create");
-		return EXIT_FAILURE;
-		}
-		if(pthread_create(&threadAck, NULL, thread, NULL) == -1) {
-		perror("pthread_create");
-		return EXIT_FAILURE;
-		}
-		if(pthread_create(&threadTime, NULL, thread, NULL) == -1) {
-		perror("pthread_create");
-		return EXIT_FAILURE;
-		}
-		printf("Après création des threads\n");
 
 
 		// while(valid < n_seg){
@@ -193,6 +235,7 @@ int main(int argc, char **argv)
 //************************************************************************************************
 //END TRANSMISSION
 
+    pthread_join(threadEnvoi,NULL);
 
 		sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		printf("%d packets send\n",nPacketsSend);
@@ -204,8 +247,9 @@ int main(int argc, char **argv)
 		double realTime = ( requestEnd.tv_sec - requestStart.tv_sec )
 		  + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / 1E9;
 
+
 		printf("TIME = %.6f\nDEBIT = %.2fko/s\n",realTime,(double) sizeFile/(realTime*1000));
-		free(buffer);
+		free(bufferFile);
 		exit(0);
 	}
 

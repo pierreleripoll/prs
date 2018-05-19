@@ -148,7 +148,7 @@ int loadFile(char * buff, char nom_fichier[64]){
 	stat(nom_fichier,&sb);
 	printf("File size : %ld\n",sb.st_size);
 	//	printf("***ENVOIE***\n");
-	num_segment = fread(buff,TAILLE_UTILE,sb.st_size/TAILLE_UTILE,fichier);
+	num_segment = fread(buff,TAILLE_UTILE,(sb.st_size/TAILLE_UTILE)+1,fichier);
 	if ( ferror( fichier ) != 0 ) {
 			fputs("Error reading file", stderr);
 			perror("fread");
@@ -165,31 +165,59 @@ int loadFile(char * buff, char nom_fichier[64]){
 }
 
 
+int chargeBuff(char * bufferFile, int numSeg, int size, Buff_t * buff ){
+	buff->buffer =bufferFile;
+	buff->sizeBuff = size;
+	buff->timeWait=0;
+	buff->numPck = numSeg;
+	printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
+	return 1;
+}
 
 char * initBuff(int sizeFile){
 	int nElem = sizeFile / (TAILLE_UTILE+1);
-	char * buffer = malloc(sizeof(char)* nElem * (TAILLE_UTILE+1));
-	memset(buffer,(int)EOF,nElem*(TAILLE_UTILE));
+	////fprintf(stderr, "NElem = %d\n",nElem );
+	char * buffer = malloc(sizeof(char)* (nElem+1) * (TAILLE_UTILE+1));
+	memset(buffer,(int)EOF,(nElem+1)*(TAILLE_UTILE+1));
 	return buffer;
 }
 
-int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile){
+// int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile){
+// 	char message[TAILLE_MAX_SEGMENT];
+// 	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
+// 	printf("%s\n",message);
+// 	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
+// 	int i;
+// 	int size = TAILLE_MAX_SEGMENT;
+// 	for(i=0;i<TAILLE_UTILE;i++){
+// 		message[i+TAILLE_ENTETE] = buff[i+(numSegment-1)*(TAILLE_UTILE)];
+// 		if (i+(numSegment-1)*(TAILLE_UTILE) == sizeFile){
+// 			size = i+TAILLE_ENTETE;
+// 			break;
+// 		}
+// 	}
+// 	//printf("Message complet : %s\n",message);
+// 	if(sendto(sock, message, size,0,addr,sizeof(*addr))==-1){
+// 		printf("Error to send i %d",numSegment);
+// 		perror("sendto");
+// 		return -1;
+// 	}
+// 	return 1;
+// }
+
+int envoyerSegment(int sock, struct sockaddr *addr, Buff_t * buff){
 	char message[TAILLE_MAX_SEGMENT];
-	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
+	snprintf(message,TAILLE_ENTETE+1,"%06d",buff->numPck);
 	printf("%s\n",message);
 	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
 	int i;
-	int size = TAILLE_MAX_SEGMENT;
-	for(i=0;i<TAILLE_UTILE;i++){
-		message[i+TAILLE_ENTETE] = buff[i+(numSegment-1)*(TAILLE_UTILE)];
-		if (i+(numSegment-1)*(TAILLE_UTILE) == sizeFile){
-			size = i+TAILLE_ENTETE;
-			break;
-		}
+	int size = buff->sizeBuff;
+	for(i=0;i<size;i++){
+		message[i+TAILLE_ENTETE] = buff->buffer[i];
 	}
-	//printf("Message complet : %s\n",message);
-	if(sendto(sock, message, size,0,addr,sizeof(*addr))==-1){
-		printf("Error to send i %d",numSegment);
+	////fprintf(stderr,"Size : %d Message complet : %s\n",size,message);
+	if(sendto(sock, message, size+TAILLE_ENTETE,0,addr,sizeof(*addr))==-1){
+		printf("Error to send i %d",buff->numPck);
 		perror("sendto");
 		return -1;
 	}

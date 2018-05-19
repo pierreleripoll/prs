@@ -13,13 +13,32 @@
 
 
 void *functionThreadSend(void* arg) {
-  BufferCircular_t *bufferC = arg;
-  int i;
+  ArgThreadEnvoi_t * argT = arg;
+  BufferCircular_t *bufferC = argT->bufferC;
+  int sock = argT->sock;
+  struct sockaddr *addr = argT->addr;
+
+  int i, start, stop;
   while(1) {
-    for(i=0;i<SNWD;i++){
-      if(bufferC->buffer[i].timeWait <= 0) {
-        bufferC->buffer[i].timeWait = RTT;
-        printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
+     start=bufferC->start;
+     stop=bufferC->stop;
+    if(stop==-1){
+      printf("Thread envoi fini\n");
+      return NULL;
+    }
+    int j=bufferC->start;
+
+    for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+      //printf("TEnvoi : %d to %d\n",start,stop);
+    //  printf("N buff case %d : %d\n",i,bufferC->buffer[i].numPck);
+      j++;
+      if(j==TAILLE_BUFFER_CIRCULAR) j = 0;
+      if(j<stop || (start>stop && j<TAILLE_BUFFER_CIRCULAR) ){
+        if(bufferC->buffer[i].timeWait <= 0) {
+          envoyerSegment(sock,addr,&bufferC->buffer[i]);
+          bufferC->buffer[i].timeWait = RTT;
+        //  printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
+        }
       }
     }
   }
@@ -49,9 +68,9 @@ void *functionThreadTime(void* arg) {
   return NULL;
 }
 
-BufferCircular_t * initBufferCircular(int size){
- Buff_t * pointeurFirstBuff = malloc(sizeof(Buff_t)*size);
- memset(pointeurFirstBuff,(int) '\0',size*sizeof(Buff_t));
+BufferCircular_t * initBufferCircular(){
+ Buff_t * pointeurFirstBuff = malloc(sizeof(Buff_t)*TAILLE_BUFFER_CIRCULAR);
+ memset(pointeurFirstBuff,(int) '\0',TAILLE_BUFFER_CIRCULAR*sizeof(Buff_t));
  BufferCircular_t * bufferCircular = malloc(sizeof(BufferCircular_t));
  bufferCircular->buffer = pointeurFirstBuff;
  bufferCircular->start = 0;
