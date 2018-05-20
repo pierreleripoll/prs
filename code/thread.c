@@ -18,29 +18,37 @@ void *functionThreadSend(void* arg) {
   int sock = argT->sock;
   int taille_buffer_circular = argT->taille_buffer_circular;
   int rtt = argT->rtt;
+  int snwd = argT->snwd;
   struct sockaddr *addr = argT->addr;
   int *nPacketsSend = argT->nPacketsSend;
   int i, start, stop;
   while(1) {
+     pthread_mutex_lock(&bufferC->mutexStart);
      start=bufferC->start;
+     pthread_mutex_unlock(&bufferC->mutexStart);
+
+     pthread_mutex_lock(&bufferC->mutexStop);
      stop=bufferC->stop;
+     pthread_mutex_unlock(&bufferC->mutexStop);
+
     if(stop==-1){
-      printf("Thread envoi fini\n");
+      if(PRINT) printf("Thread envoi fini\n");
       return NULL;
     }
     int j=bufferC->start;
 
-    for(i=0;i<taille_buffer_circular;i++){
-      //printf("TEnvoi : %d to %d\n",start,stop);
-    //  printf("N buff case %d : %d\n",i,bufferC->buffer[i].numPck);
+    for(i=0;i<snwd;i++){
+      //if(PRINT) printf("TEnvoi : %d to %d\n",start,stop);
+    //  if(PRINT) printf("N buff case %d : %d\n",i,bufferC->buffer[i].numPck);
       j++;
       if(j==taille_buffer_circular) j = 0;
       if(j<stop || (start>stop && j<taille_buffer_circular) ){
-        if(bufferC->buffer[i].timeWait <= 0) {
+        if(bufferC->buffer[i].timeWait <= 0 || bufferC->buffer[i].ackWarning > WARNING) {
           envoyerSegment(sock,addr,&bufferC->buffer[i]);
           *nPacketsSend = *nPacketsSend+1;
           bufferC->buffer[i].timeWait = rtt;
-        //  printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
+          bufferC->buffer[i].ackWarning=0;
+        //  if(PRINT) printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
         }
       }
     }
@@ -53,19 +61,19 @@ void *functionThreadReceive(void* arg) {
   while(1) {
     sleep(1);
     buffer->numPck++;
-    printf("NumPack buffer : %d\n",buffer->numPck);
+    if(PRINT) printf("NumPack buffer : %d\n",buffer->numPck);
   }
   return NULL;
 }
 
 void *functionThreadTime(void* arg) {
   int *t = arg;
-  printf("functionThreadTime created arg==%d\n",*t );
+  if(PRINT) printf("functionThreadTime created arg==%d\n",*t );
   while(1) {
     usleep(100);
     if(*t > 0) {
       *t-=1;
-      //printf("%d\n",*t);
+      //if(PRINT) printf("%d\n",*t);
     }
   }
   return NULL;

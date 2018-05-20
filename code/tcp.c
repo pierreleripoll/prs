@@ -31,7 +31,9 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 
 	recvfrom(udp_connection, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 	if(strcmp(message_recu,"SYN") == 0) {
-		printf("tentative de connection\n");
+		if(PRINT){
+			printf("tentative de connection\n");
+		}
 		char porti[4], msg[11];
 		portDispo(porti);
 		portSocket = atoi(porti);
@@ -42,7 +44,9 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 
 			/*******************Creation des sockets --- UDP ON EST LE FILS ***************************/
 			*udp_descripteur = initialization_socket(portSocket);
-			printf("Fin boucle init fils\n");
+			if(PRINT){
+				printf("Fin boucle init fils\n");
+			}
 			kill(getppid(),SIGUSR1);
 			return portSocket;
 		}
@@ -51,16 +55,21 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 		if(pause()<0){
 			perror("pause");
 		}
-		printf("Daddy woke up\n");
+		if(PRINT){
+			printf("Daddy woke up\n");
+		}
 		strcpy(msg, "SYN-ACK");
 		strcat(msg, porti);
-		printf("msg : %s\n",msg);
+		if(PRINT){
+			printf("msg : %s\n",msg);
+		}
 		sendto(udp_connection, msg, 12, 0,(struct sockaddr *)&addr_client, (socklen_t)taille_addr_client);
 
 		recvfrom(udp_connection, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		if(strcmp(message_recu,"ACK") == 0) {
-			printf("CONNECTED SERVEUR\n");
-
+			if(PRINT){
+				printf("CONNECTED SERVEUR\n");
+			}
 			return portSocket;
 		}
 	}
@@ -83,11 +92,14 @@ int initialization_socket(int port) {
 	/*******************Creation des sockets --- UDP -- CONNECTION ***************************/
 	int udp_connection = socket(AF_INET, SOCK_DGRAM, 0); //on crée la socket UDP
 	if(udp_connection < 0) {
-		printf("Erreur, socket UDP connection non crée\n");
+		if(PRINT){
+			printf("Erreur, socket UDP connection non crée\n");
+		}
 		return -1;
 	} else {
-		printf("Descripteur UDP-connection = %d\n", udp_connection);
-
+		if(PRINT){
+			printf("Descripteur UDP-connection = %d\n", udp_connection);
+		}
 		/*Pour faire en sorte que la socket ne soit pas bloquée*/
 		int reuse = 1;
 		setsockopt(udp_connection, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
@@ -116,20 +128,25 @@ int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 	fichier = fopen(nom_fichier,"rb");
 	char buffer[1024][TAILLE_UTILE];
 	//unsigned int entete[32];
-
-	printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
-	//	printf("***ENVOIE***\n");
+	if(PRINT){
+		printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
+	}
+		//	printf("***ENVOIE***\n");
 	num_segment = fread(buffer,1024,TAILLE_UTILE,fichier);
 	char message[TAILLE_MAX_SEGMENT];
 
 	for (i=0;i<num_segment;i++){
 		//printf("Buff %d :\n%s\n",i,buffer[i]);
 		snprintf(message,7,"%06d",i);
-		printf("Entete message : %s\n",message);
+		if(PRINT){
+			printf("Entete message : %s\n",message);
+		}
 		strcat(message,buffer[i]);
 		//	printf("Message final :\n%s\n--------------------\n",message);
 		if(sendto(sock, message, 1024,0,addr,sizeof(*addr))==-1){
-			printf("Error to send i %d",i);
+			if(PRINT){
+				printf("Error to send i %d",i);
+			}
 			perror("send");
 			return -1;
 		}
@@ -143,22 +160,24 @@ int loadFile(char * buff, char nom_fichier[64]){
 
 	FILE *fichier;
 	fichier = fopen(nom_fichier,"rb");
-	printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
+	if(PRINT){
+		printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
+	}
 	struct stat sb;
 	stat(nom_fichier,&sb);
-	printf("File size : %ld\n",sb.st_size);
-	//	printf("***ENVOIE***\n");
+	if(PRINT) printf("File size : %ld\n",sb.st_size);
+	//	if(PRINT) printf("***ENVOIE***\n");
 	num_segment = fread(buff,TAILLE_UTILE,(sb.st_size/TAILLE_UTILE)+1,fichier);
 	if ( ferror( fichier ) != 0 ) {
 			fputs("Error reading file", stderr);
 			perror("fread");
 	}
 	fclose(fichier);
-	printf("Buffer size : %zu TAILLE_UTILE = %d\n",num_segment,TAILLE_UTILE);
+	if(PRINT) printf("Buffer size : %zu TAILLE_UTILE = %d\n",num_segment,TAILLE_UTILE);
 	//num_segment=num_segment/TAILLE_UTILE;
 
-	printf("%zu segments\n",num_segment+1);
-	//printf("Buffer : %s\n",buff);
+	if(PRINT) printf("%zu segments\n",num_segment+1);
+	//if(PRINT) printf("Buffer : %s\n",buff);
 
 
 	return num_segment;
@@ -170,7 +189,8 @@ int chargeBuff(char * bufferFile, int numSeg, int size, Buff_t * buff ){
 	buff->sizeBuff = size;
 	buff->timeWait=0;
 	buff->numPck = numSeg;
-	printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
+	buff->ackWarning=0;
+	if(PRINT) printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
 	return 1;
 }
 
@@ -185,7 +205,7 @@ char * initBuff(int sizeFile){
 // int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile){
 // 	char message[TAILLE_MAX_SEGMENT];
 // 	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
-// 	printf("%s\n",message);
+// 	if(PRINT) printf("%s\n",message);
 // 	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
 // 	int i;
 // 	int size = TAILLE_MAX_SEGMENT;
@@ -196,9 +216,9 @@ char * initBuff(int sizeFile){
 // 			break;
 // 		}
 // 	}
-// 	//printf("Message complet : %s\n",message);
+// 	//if(PRINT) printf("Message complet : %s\n",message);
 // 	if(sendto(sock, message, size,0,addr,sizeof(*addr))==-1){
-// 		printf("Error to send i %d",numSegment);
+// 		if(PRINT) printf("Error to send i %d",numSegment);
 // 		perror("sendto");
 // 		return -1;
 // 	}
@@ -208,7 +228,7 @@ char * initBuff(int sizeFile){
 int envoyerSegment(int sock, struct sockaddr *addr, Buff_t * buff){
 	char message[TAILLE_MAX_SEGMENT];
 	snprintf(message,TAILLE_ENTETE+1,"%06d",buff->numPck);
-	printf("%s\n",message);
+	if(PRINT) printf("%s\n",message);
 	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
 	int i;
 	int size = buff->sizeBuff;
@@ -217,7 +237,7 @@ int envoyerSegment(int sock, struct sockaddr *addr, Buff_t * buff){
 	}
 	////fprintf(stderr,"Size : %d Message complet : %s\n",size,message);
 	if(sendto(sock, message, size+TAILLE_ENTETE,0,addr,sizeof(*addr))==-1){
-		printf("Error to send i %d",buff->numPck);
+		if(PRINT) printf("Error to send i %d",buff->numPck);
 		perror("sendto");
 		return -1;
 	}
@@ -228,7 +248,7 @@ int receive(int sock, char nom_fichier[64]) {
 	int i;
 	unsigned int num_segment;
 
-	printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
+	if(PRINT) printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
 	FILE *fichier;
 	fichier = fopen(nom_fichier,"wb");
 	unsigned int buffer[TAILLE_MAX_SEGMENT];
@@ -242,13 +262,13 @@ int receive(int sock, char nom_fichier[64]) {
 			}
 			fputc(buffer[i],fichier);
 			if(buffer[i] == EOF) {
-				printf("RECU n°%d\n",num_segment);
-				printf("*********end************\n");
+				if(PRINT) printf("RECU n°%d\n",num_segment);
+				if(PRINT) printf("*********end************\n");
 				fclose(fichier);
 				return 0;
 			}
 		}
-		printf("RECU n°%d\n",num_segment);
+		if(PRINT) printf("RECU n°%d\n",num_segment);
 
 		if(num_segment >= 0) {
 			if(num_segment < 10) {
@@ -315,7 +335,7 @@ int receive(int sock, char nom_fichier[64]) {
 		}
 
 		send(sock, ack, strlen(ack)+1, 0);
-		printf("ACK n°%s envoyé\n",ack);
+		if(PRINT) printf("ACK n°%s envoyé\n",ack);
 	}
 	return -1;
 }

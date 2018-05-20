@@ -16,12 +16,12 @@ client_name= "client"+suffix
 
 output= open(output_file, "a")
 
-for taille in range(10,50,10):
-    server_launch_command= "./" +server_name +" " +server_port +" "+str(taille)+" "+str(taille)+" "+"100 "+" &"
+for rtt in range(1,50,1):
+    server_launch_command= "./" +server_name +" " +server_port +" "+" 18 "+" "+" 18 "+" "+str(rtt)+" &"
     client_launch_command= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name + " 0"
     speed = 0
-    for i in range(10):
-        os.system(server_launch_command)
+    os.system(server_launch_command)
+    for i in range(20):
         start_time= time.time()
         os.system(client_launch_command)
         end_time= time.time()
@@ -32,8 +32,8 @@ for taille in range(10,50,10):
         statinfo= os.stat(copy_file_name)
         speed += int(statinfo.st_size/delta)
 
-    speed = speed/10
-    output.write(str(taille)+";"+ str(speed)+"\n")
+    speed = speed/20
+    output.write(str(rtt)+";"+ str(speed)+"\n")
 
     kill_command= "killall server"
     os.system(kill_command)
