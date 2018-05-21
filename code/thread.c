@@ -35,7 +35,7 @@ void *functionThreadSend(void* arg) {
       if(PRINT) printf("Thread envoi fini\n");
       return NULL;
     }
-    int j=bufferC->start;
+    int j=start;
 
     for(i=0;i<snwd;i++){
       //if(PRINT) printf("TEnvoi : %d to %d\n",start,stop);
@@ -43,27 +43,68 @@ void *functionThreadSend(void* arg) {
       j++;
       if(j==taille_buffer_circular) j = 0;
       if(j<stop || (start>stop && j<taille_buffer_circular) ){
+        pthread_mutex_lock(&bufferC->buffer[i].mutexBuff);
         if(bufferC->buffer[i].timeWait <= 0 || bufferC->buffer[i].ackWarning > WARNING) {
+
           envoyerSegment(sock,addr,&bufferC->buffer[i]);
           *nPacketsSend = *nPacketsSend+1;
           bufferC->buffer[i].timeWait = rtt;
           bufferC->buffer[i].ackWarning=0;
         //  if(PRINT) printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
         }
+        pthread_mutex_unlock(&bufferC->buffer[i].mutexBuff);
+
       }
     }
   }
   return NULL;
 }
 
+int chargeBuff(char * bufferFile, int numSeg, int size, Buff_t * buff ){
+  pthread_mutex_lock(&buff->mutexBuff);
+	buff->buffer =bufferFile;
+	buff->sizeBuff = size;
+	buff->timeWait=0;
+	buff->numPck = numSeg;
+	buff->ackWarning=0;
+	if(PRINT) printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
+  pthread_mutex_unlock(&buff->mutexBuff);
+	return 1;
+}
+
 void *functionThreadReceive(void* arg) {
-  Buff_t *buffer = arg;
+
+  ArgThreadReceive_t * argT = arg;
+  BufferCircular_t *bufferC = argT->bufferC;
+  int sock = argT->sock;
+  int taille_buffer_circular = argT->taille_buffer_circular;
+  int *rtt = argT->rtt;
+  int *snwd = argT->snwd;
+  struct sockaddr *addr = argT->addr;
+  int *ackReceived = argT->ackReceived;
+  char message_recu[2000];
+  int newAck;
+  int taille_addr_client = argT->taille_addr_client;
+  int n_seg_total= argT->n_seg_total;
   while(1) {
-    sleep(1);
-    buffer->numPck++;
-    if(PRINT) printf("NumPack buffer : %d\n",buffer->numPck);
+    while(recvfrom(sock, message_recu, sizeof(message_recu),0,addr, (socklen_t*)&taille_addr_client) >0){
+      if(strcmp(message_recu,"ACK") > 0){
+        if(PRINT) printf("Recu : %s\n",message_recu);
+        newAck = atoi(&message_recu[3]);
+        if(PRINT) printf("ACK %d\n",newAck);
+        int i;
+        for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+          pthread_mutex_lock(&bufferC->buffer[i].mutexBuff);
+          if(bufferC->buffer[i].numPck == newAck+1) bufferC->buffer[i].ackWarning = bufferC->buffer[i].ackWarning +1;
+          pthread_mutex_unlock(&bufferC->buffer[i].mutexBuff);
+        }
+        pthread_mutex_lock(argT->mutexAck);
+        *ackReceived = newAck;
+        pthread_mutex_unlock(argT->mutexAck);
+
+        }
+    }
   }
-  return NULL;
 }
 
 void *functionThreadTime(void* arg) {
@@ -72,7 +113,7 @@ void *functionThreadTime(void* arg) {
   while(1) {
     usleep(100);
     if(*t > 0) {
-      *t-=1;
+      *t = *t-1;
       //if(PRINT) printf("%d\n",*t);
     }
   }

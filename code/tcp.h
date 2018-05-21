@@ -12,9 +12,9 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define TAILLE_BUFFER_CIRCULAR 15
-#define SNWD 15
-#define RTT 80 //en dixième de milliseconde
+#define TAILLE_BUFFER_CIRCULAR 23
+#define SNWD 23
+#define RTT 50 //en dixième de milliseconde
 #define WARNING 3
 #define PRINT 0
 #define PRINT_RESULT 1
@@ -26,6 +26,7 @@ typedef struct Buff {
   int ackWarning;
   pthread_t threadTime;
   int sizeBuff;
+  pthread_mutex_t mutexBuff;
 } Buff_t;
 
 typedef struct bufferCircular{
@@ -46,6 +47,18 @@ typedef struct ArgThreadEnvoi{
   struct sockaddr *addr;
 }ArgThreadEnvoi_t;
 
+typedef struct ArgThreadReceive{
+  int n_seg_total;
+  pthread_mutex_t *mutexAck;
+  int *rtt;
+  int taille_buffer_circular;
+  int *snwd;
+  int taille_addr_client;
+  int *ackReceived;
+  BufferCircular_t * bufferC;
+  int sock;
+  struct sockaddr *addr;
+}ArgThreadReceive_t;
 
 int port[maxPort]; //varie entre 6000 et 6005
 

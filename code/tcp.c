@@ -184,15 +184,7 @@ int loadFile(char * buff, char nom_fichier[64]){
 }
 
 
-int chargeBuff(char * bufferFile, int numSeg, int size, Buff_t * buff ){
-	buff->buffer =bufferFile;
-	buff->sizeBuff = size;
-	buff->timeWait=0;
-	buff->numPck = numSeg;
-	buff->ackWarning=0;
-	if(PRINT) printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
-	return 1;
-}
+
 
 char * initBuff(int sizeFile){
 	int nElem = sizeFile / (TAILLE_UTILE+1);

@@ -117,16 +117,19 @@ int main(int argc, char **argv)
 
     if(PRINT) printf("Debut du threading\n");
 		pthread_t threadEnvoi;
-
+		pthread_t threadReceive;
 
 		BufferCircular_t * bufferCircular = initBufferCircular(taille_buffer_circular);
 		if(PRINT) printf("Circular buffer initialized\n");
 		int i;
-    int n_seg= 1, pointeurFile= 0 ,ack =0, ackReceived = 0;
+    int n_seg= 1, pointeurFile= 0 ,ack =0, newAck=0;
+		int *ackReceived = malloc(sizeof(int));
+		*ackReceived=0;
 		for(i=0;i<taille_buffer_circular;i++){
 
       chargeBuff(&bufferFile[pointeurFile],n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
       startThreadTime(&(bufferCircular->buffer[i]));
+			pthread_mutex_init(&bufferCircular->buffer[i].mutexBuff,NULL);
       pointeurFile+=TAILLE_UTILE;
       n_seg++;
     }
@@ -139,7 +142,7 @@ int main(int argc, char **argv)
 		pthread_mutex_lock(&bufferCircular->mutexStop);
 		bufferCircular->stop=snwd-1;
 		pthread_mutex_unlock(&bufferCircular->mutexStop);
-
+		pthread_mutex_t mutexAck;
 
 		ArgThreadEnvoi_t * argThreadEnvoi = malloc(sizeof(ArgThreadEnvoi_t));
     argThreadEnvoi->bufferC=bufferCircular;
@@ -150,44 +153,72 @@ int main(int argc, char **argv)
 		argThreadEnvoi->snwd= snwd;
     argThreadEnvoi->taille_buffer_circular = taille_buffer_circular;
 
+		ArgThreadReceive_t * argThreadReceive = malloc(sizeof(ArgThreadReceive_t));
+		argThreadReceive->bufferC=bufferCircular;
+		argThreadReceive->sock=udp_descripteur;
+		argThreadReceive->addr=(struct sockaddr *) &addr_client;
+		argThreadReceive->rtt = &rtt;
+		argThreadReceive->snwd= &snwd;
+		argThreadReceive->taille_buffer_circular = taille_buffer_circular;
+		argThreadReceive->ackReceived = ackReceived;
+		argThreadReceive->taille_addr_client = taille_addr_client;
+		argThreadReceive->mutexAck=&mutexAck;
+		argThreadReceive->n_seg_total = n_seg_total;
+		pthread_mutex_init(&mutexAck,NULL);
+
 
 		if(pthread_create(&threadEnvoi, NULL, functionThreadSend, argThreadEnvoi) == -1) {
 			perror("pthread_create");
 			return EXIT_FAILURE;
+		}else{
+			printf("Thread Envoi created\n");
+		}
+
+		if(pthread_create(&threadReceive, NULL, functionThreadReceive, argThreadReceive) == -1) {
+			perror("pthread_create");
+			return EXIT_FAILURE;
+		}
+		else{
+			printf("Thread Receive created\n");
 		}
     //fprintf(stderr, "BUFFER FILE : \n%s\n\n\n",&bufferFile[(n_seg_total-1)*TAILLE_UTILE] );
 
     while(ack != n_seg_total){
 
-    	while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-				if(strcmp(message_recu,"ACK") > 0){
-					if(PRINT) printf("Recu : %s\n",message_recu);
-					ackReceived = atoi(&message_recu[3]);
-					if(PRINT) printf("ACK %d\n",ackReceived);
-					int i;
-					for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
-						if(bufferCircular->buffer[i].numPck == ackReceived+1) bufferCircular->buffer[i].ackWarning = bufferCircular->buffer[i].ackWarning +1;
-					}
-					if(ackReceived>ack){
-            if(PRINT) printf("BREAK\n");
-            break;
+    	// while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
+			// 	if(strcmp(message_recu,"ACK") > 0){
+			// 		if(PRINT) printf("Recu : %s\n",message_recu);
+			// 		*ackReceived = atoi(&message_recu[3]);
+			// 		if(PRINT) printf("ACK %d\n",*ackReceived);
+			// 		int i;
+			// 		for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
+			// 			pthread_mutex_lock(&bufferCircular->buffer[i].mutexBuff);
+			// 			if(bufferCircular->buffer[i].numPck == *ackReceived+1) bufferCircular->buffer[i].ackWarning = bufferCircular->buffer[i].ackWarning +1;
+			// 			pthread_mutex_unlock(&bufferCircular->buffer[i].mutexBuff);
+			// 		}
+			// 		if(*ackReceived>ack){
+      //       if(PRINT) printf("BREAK\n");
+      //       break;
+      //
+      //     }
+			// 	  }
+			// }
+			pthread_mutex_lock(argThreadReceive->mutexAck);
+			newAck = *ackReceived;
+			pthread_mutex_unlock(argThreadReceive->mutexAck);
 
-          }
-				  }
-			}
-
-      if(ackReceived>ack){
+      if(newAck>ack){
         if(PRINT) printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
 
 				pthread_mutex_lock(&bufferCircular->mutexStart);
-        bufferCircular->start = bufferCircular->start +(ackReceived-ack);
+        bufferCircular->start = bufferCircular->start +(newAck-ack);
         if(bufferCircular->start>=taille_buffer_circular) bufferCircular->start = bufferCircular->start -taille_buffer_circular;
 				pthread_mutex_unlock(&bufferCircular->mutexStart);
 
           int k,j,size= 0;
           for(k=0;k<taille_buffer_circular;k++){ // on cherche le début des paquets validés
             if(bufferCircular->buffer[k].numPck == ack+1){ // on a trouvé le paquet validé
-              for(j=0;j<(ackReceived-ack);j++){
+              for(j=0;j<(newAck-ack);j++){
                 if(n_seg<=n_seg_total){
                   if(k==taille_buffer_circular) k =0; //si jamais on est a la limite du buffer C
                   if(n_seg == n_seg_total) { //c'est le dernier paquet a envoyer
@@ -205,20 +236,21 @@ int main(int argc, char **argv)
             }
           }//endFOR
 
-          if(PRINT) printf("ackReceived %d\n",ackReceived);
+          if(PRINT) printf("*ackReceived %d\n",newAck);
 					pthread_mutex_lock(&bufferCircular->mutexStop);
-          bufferCircular->stop = bufferCircular->stop+ (ackReceived-ack);
+          bufferCircular->stop = bufferCircular->stop+ (newAck-ack);
           if(bufferCircular->stop>=taille_buffer_circular) bufferCircular->stop = bufferCircular->stop -taille_buffer_circular;
+					ack = newAck;
+					if (ack>=n_seg_total) bufferCircular->stop = -1;
 					pthread_mutex_unlock(&bufferCircular->mutexStop);
 
-          ack = ackReceived;
-          if (ack>=n_seg_total) bufferCircular->stop = -1;
+
           if(PRINT) printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
-          if(PRINT) printf("Etat buffer Circular :\n");
-          int i;
-          for(i=0;i<taille_buffer_circular;i++){
-            if(PRINT) printf("%d : %d | ",i,bufferCircular->buffer[i].numPck);
-          }
+          // if(PRINT) printf("Etat buffer Circular :\n");
+          // int i;
+          // for(i=0;i<taille_buffer_circular;i++){
+          //   if(PRINT) printf("%d : %d | ",i,bufferCircular->buffer[i].numPck);
+          // }
 
       }//ENF IF ACKRECEVEID > ACK
 
@@ -269,10 +301,12 @@ int main(int argc, char **argv)
 //************************************************************************************************
 //END TRANSMISSION
 
-    pthread_join(threadEnvoi,NULL);
 
 		sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 		if(PRINT || PRINT_RESULT) printf("%d packets send\n",nPacketsSend);
+		pthread_cancel(threadEnvoi);
+		pthread_cancel(threadReceive);
+
 		//fclose(fp);
 		clock_gettime(CLOCK_REALTIME, &requestEnd);
 
