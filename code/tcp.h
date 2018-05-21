@@ -12,10 +12,10 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define TAILLE_BUFFER_CIRCULAR 23
-#define SNWD 23
-#define RTT 50 //en dixième de milliseconde
-#define WARNING 3
+#define TAILLE_BUFFER_CIRCULAR 15
+#define SNWD 15
+#define RTT 45 //en dixième de milliseconde
+#define WARNING 2
 #define PRINT 0
 #define PRINT_RESULT 1
 
