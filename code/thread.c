@@ -40,13 +40,14 @@ void *functionThreadSend(void* arg) {
     for(i=0;i<snwd;i++){
       //if(PRINT) printf("TEnvoi : %d to %d\n",start,stop);
     //  if(PRINT) printf("N buff case %d : %d\n",i,bufferC->buffer[i].numPck);
+
       j = j+1;
       if(j==taille_buffer_circular) j = 0;
       if(j<stop || (start>stop && j<taille_buffer_circular)  ){
        pthread_mutex_lock(&bufferC->buffer[j].mutexBuff);
       //  if(bufferC->buffer[i].timeWait <= 0 ) {
           envoyerSegment(sock,addr,&bufferC->buffer[j]);
-          bufferC->buffer[j].timeWait = rtt;
+          //bufferC->buffer[j].timeWait = rtt;
         //}
         pthread_mutex_unlock(&bufferC->buffer[j].mutexBuff);
 
@@ -86,7 +87,7 @@ void *functionThreadReceive(void* arg) {
   int taille_addr_client = argT->taille_addr_client;
   int lastAck, nAck, start;
   int lastPaquet = 0;
-
+  int n_seg_total  = argT->n_seg_total;
   while(1) {
     while(recvfrom(sock, message_recu, sizeof(message_recu),0,addr, (socklen_t*)&taille_addr_client) >0){
         newAck = atoi(&message_recu[3]);
@@ -119,7 +120,7 @@ void *functionThreadReceive(void* arg) {
 			*ackReceived = newAck;
 			pthread_mutex_unlock(argT->mutexAck);
 
-
+      if(newAck == n_seg_total) return NULL;
 		}
 
     }

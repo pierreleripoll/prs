@@ -105,12 +105,12 @@ int main(int argc, char **argv)
 		//fp = fopen("out.txt","wb");
 
 
-    if(PRINT) printf("Debut du threading\n");
+  //  if(PRINT) printf("Debut du threading\n");
 		pthread_t threadEnvoi;
 		pthread_t threadReceive;
 
 		BufferCircular_t * bufferCircular = initBufferCircular(taille_buffer_circular);
-		if(PRINT) printf("Circular buffer initialized\n");
+		//if(PRINT) printf("Circular buffer initialized\n");
 		int i;
     int n_seg= 1, pointeurFile= 0 ,ack =0, newAck=0;
 		int *ackReceived = malloc(sizeof(int));
@@ -141,6 +141,7 @@ int main(int argc, char **argv)
     argThreadEnvoi->rtt = rtt;
 		argThreadEnvoi->snwd= snwd;
     argThreadEnvoi->taille_buffer_circular = taille_buffer_circular;
+
 
 		ArgThreadReceive_t * argThreadReceive = malloc(sizeof(ArgThreadReceive_t));
 		argThreadReceive->bufferC=bufferCircular;
@@ -182,22 +183,22 @@ int main(int argc, char **argv)
         //if(PRINT) printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
 
 
-          int k,indice=bufferCircular->start-1,j,size= 0;
+          int k,j,size= 0;
           for(k=0;k<taille_buffer_circular;k++){ // on cherche le début des paquets validés
-						indice = indice+1;
-						if(indice==taille_buffer_circular) indice =0;
-						if(bufferCircular->buffer[indice].numPck == ack+1){ // on a trouvé le paquet validé
+
+						if(k==taille_buffer_circular) k =0;
+						if(bufferCircular->buffer[k].numPck == ack+1){ // on a trouvé le paquet validé
               for(j=0;j<(newAck-ack);j++){
                 if(n_seg<=n_seg_total){
-                  if(indice==taille_buffer_circular) indice =0; //si jamais on est a la limite du buffer C
+                  if(k==taille_buffer_circular) k =0; //si jamais on est a la limite du buffer C
                   if(n_seg == n_seg_total) { //c'est le dernier paquet a envoyer
                     size = sizeFile - ((n_seg-1)*TAILLE_UTILE);
                   }
                   else size = TAILLE_UTILE;
-                  chargeBuff(fichier,n_seg,size,&(bufferCircular->buffer[indice]));
+                  chargeBuff(fichier,n_seg,size,&(bufferCircular->buffer[k]));
                   n_seg++;
                   pointeurFile+=TAILLE_UTILE;
-                  indice=indice+1;
+                  k=k+1;
                 }
               }
               break;
@@ -219,17 +220,19 @@ int main(int argc, char **argv)
 
 
 
-		if(PRINT) printf("Fin déclaration du threading\n");
+		//if(PRINT) printf("Fin déclaration du threading\n");
 
 //------------------------------------------------------------------------------------------------
 //************************************************************************************************
 //END TRANSMISSION
 
-		pthread_cancel(threadEnvoi);
-		pthread_cancel(threadReceive);
+		pthread_join(threadEnvoi,NULL);
+		pthread_join(threadReceive,NULL);
 		int n =0;
-		for(n=0;n<10;n++){
-			sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
+
+		for(n=0;n<100;n++){
+			sendto(udp_descripteur, "FIN", 4+1,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
+			usleep(500);
 		 }
 
 

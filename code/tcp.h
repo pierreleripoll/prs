@@ -15,7 +15,7 @@
 #define TAILLE_BUFFER_CIRCULAR 200
 #define SNWD 200
 #define RTT 0 //en dixième de milliseconde
-#define WARNING 4
+#define WARNING 3
 #define PRINT 0
 #define PRINT_RESULT 1
 
