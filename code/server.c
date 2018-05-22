@@ -38,7 +38,6 @@ void handle_signal() {
 
 int main(int argc, char **argv)
 {
-	struct timespec requestStart, requestEnd;
 	int portUsr, i, connected, pid[maxConnection];
 	i=0;
 	pere = 0;
@@ -52,11 +51,11 @@ int main(int argc, char **argv)
   int rtt = RTT;
 
   if(argc==4){
-     if(PRINT) printf("ARGUMENTS TOKEN\n");
+
      taille_buffer_circular = atoi(argv[1]);
      snwd = atoi(argv[2]);
      rtt = atoi(argv[3]);
-     if(PRINT) printf("%d , %d , %d\n",taille_buffer_circular,snwd,rtt);
+     printf("%d , %d , %d\n",taille_buffer_circular,snwd,rtt);
    }
 
 	/*******************Arguments lors du lancement du programme********************/
@@ -88,7 +87,6 @@ int main(int argc, char **argv)
 	if(connected != 0) {
 		if(PRINT) printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		/********CONNECTION REUSSI *******************/
-		clock_gettime(CLOCK_REALTIME, &requestStart);
 
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		if(PRINT) printf("on a recu : %s\n", message_recu);
@@ -118,7 +116,7 @@ int main(int argc, char **argv)
 		for(i=0;i<taille_buffer_circular;i++){
 
       chargeBuff(fichier,n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
-      //startThreadTime(&(bufferCircular->buffer[i]));
+      if(USERTT) startThreadTime(&(bufferCircular->buffer[i]));
 			pthread_mutex_init(&bufferCircular->buffer[i].mutexBuff,NULL);
       pointeurFile+=TAILLE_UTILE;
       n_seg++;
@@ -231,18 +229,14 @@ int main(int argc, char **argv)
 		int n =0;
 
 		for(n=0;n<100;n++){
-			sendto(udp_descripteur, "FIN", 4+1,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
+			sendto(udp_descripteur, "FIN", 30+1,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 			usleep(500);
 		 }
 
 
-		clock_gettime(CLOCK_REALTIME, &requestEnd);
-
-		double realTime = ( requestEnd.tv_sec - requestStart.tv_sec )+ ( requestEnd.tv_nsec - requestStart.tv_nsec ) / 1E9;
 
 		close(udp_descripteur);
-		if(PRINT || PRINT_RESULT) printf("TIME = %.6f\nDEBIT = %.2fko/s\n",realTime,(double) sizeFile/(realTime*1000));
-		fclose(fichier);
+=		fclose(fichier);
 		exit(0);
 	}
 

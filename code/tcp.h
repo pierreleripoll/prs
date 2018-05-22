@@ -18,6 +18,7 @@
 #define WARNING 3
 #define PRINT 0
 #define PRINT_RESULT 1
+#define USERTT 1
 
 typedef struct Buff {
   int numPck;

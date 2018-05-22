@@ -44,12 +44,17 @@ void *functionThreadSend(void* arg) {
       j = j+1;
       if(j==taille_buffer_circular) j = 0;
       if(j<stop || (start>stop && j<taille_buffer_circular)  ){
-       pthread_mutex_lock(&bufferC->buffer[j].mutexBuff);
-      //  if(bufferC->buffer[i].timeWait <= 0 ) {
-          envoyerSegment(sock,addr,&bufferC->buffer[j]);
-          //bufferC->buffer[j].timeWait = rtt;
-        //}
+        pthread_mutex_lock(&bufferC->buffer[j].mutexBuff);
+       if(USERTT){
+           if(bufferC->buffer[j].timeWait <= 0 ) {
+              envoyerSegment(sock,addr,&bufferC->buffer[j]);
+              bufferC->buffer[j].timeWait = rtt;
+              }
+            }else{
+              envoyerSegment(sock,addr,&bufferC->buffer[j]);
+            }
         pthread_mutex_unlock(&bufferC->buffer[j].mutexBuff);
+
 
       }
     }
@@ -60,15 +65,15 @@ void *functionThreadSend(void* arg) {
 
 
 int chargeBuff(FILE * fichier, int numSeg, int size, Buff_t * buff ){
-  //pthread_mutex_lock(&buff->mutexBuff);
+  pthread_mutex_lock(&buff->mutexBuff);
 
 	snprintf(buff->buffer,TAILLE_ENTETE+1,"%06d",numSeg);
   fread(&buff->buffer[TAILLE_ENTETE],size,1,fichier);
 	buff->sizeBuff = size;
-	buff->timeWait=0;
+	if(USERTT) buff->timeWait=0;
 	buff->numPck = numSeg;
-	if(PRINT) printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
-  //pthread_mutex_unlock(&buff->mutexBuff);
+	//if(PRINT) printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
+  pthread_mutex_unlock(&buff->mutexBuff);
 	return 1;
 }
 
@@ -102,10 +107,12 @@ void *functionThreadReceive(void* arg) {
 				start = bufferC->start;
 				if(bufferC->buffer[start].numPck == lastAck+1){
 					//printf("SEND FAST RETRANSMIRT\n");
-					//bufferC->buffer[start].timeWait = 0;
+					if(USERTT) {
+            bufferC->buffer[start].timeWait = 0;
+          }else{
 					envoyerSegment(sock,addr,&bufferC->buffer[start]);
-
-				//	bufferC->buffer[start].timeWait = *rtt;
+          bufferC->buffer[start].timeWait = *rtt;
+          }
 				}
 			}
 		}
