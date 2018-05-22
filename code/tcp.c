@@ -184,7 +184,12 @@ int loadFile(char * buff, char nom_fichier[64]){
 }
 
 
+FILE * openFichier(char nom_fichier[64]){
+	FILE * fichier;
+	fichier = fopen(nom_fichier,"rb");
+	return fichier;
 
+}
 
 char * initBuff(int sizeFile){
 	int nElem = sizeFile / (TAILLE_UTILE+1);
@@ -194,142 +199,14 @@ char * initBuff(int sizeFile){
 	return buffer;
 }
 
-// int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile){
-// 	char message[TAILLE_MAX_SEGMENT];
-// 	snprintf(message,TAILLE_ENTETE+1,"%06d",numSegment);
-// 	if(PRINT) printf("%s\n",message);
-// 	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
-// 	int i;
-// 	int size = TAILLE_MAX_SEGMENT;
-// 	for(i=0;i<TAILLE_UTILE;i++){
-// 		message[i+TAILLE_ENTETE] = buff[i+(numSegment-1)*(TAILLE_UTILE)];
-// 		if (i+(numSegment-1)*(TAILLE_UTILE) == sizeFile){
-// 			size = i+TAILLE_ENTETE;
-// 			break;
-// 		}
-// 	}
-// 	//if(PRINT) printf("Message complet : %s\n",message);
-// 	if(sendto(sock, message, size,0,addr,sizeof(*addr))==-1){
-// 		if(PRINT) printf("Error to send i %d",numSegment);
-// 		perror("sendto");
-// 		return -1;
-// 	}
-// 	return 1;
-// }
 
 int envoyerSegment(int sock, struct sockaddr *addr, Buff_t * buff){
-	char message[TAILLE_MAX_SEGMENT];
-	snprintf(message,TAILLE_ENTETE+1,"%06d",buff->numPck);
-	if(PRINT) printf("%s\n",message);
-	//strncat(message,buff+(numSegment-1)*(TAILLE_UTILE+1),TAILLE_UTILE+1);
-	int i;
-	int size = buff->sizeBuff;
-	for(i=0;i<size;i++){
-		message[i+TAILLE_ENTETE] = buff->buffer[i];
-	}
-	////fprintf(stderr,"Size : %d Message complet : %s\n",size,message);
-	if(sendto(sock, message, size+TAILLE_ENTETE,0,addr,sizeof(*addr))==-1){
-		if(PRINT) printf("Error to send i %d",buff->numPck);
+
+	if(sendto(sock, buff->buffer, buff->sizeBuff+TAILLE_ENTETE,0,addr,sizeof(*addr))==-1){
 		perror("sendto");
 		return -1;
 	}
 	return 1;
-}
-
-int receive(int sock, char nom_fichier[64]) {
-	int i;
-	unsigned int num_segment;
-
-	if(PRINT) printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
-	FILE *fichier;
-	fichier = fopen(nom_fichier,"wb");
-	unsigned int buffer[TAILLE_MAX_SEGMENT];
-	char ack[6];
-
-	while(1) {
-		recv(sock, buffer, sizeof(buffer), 0);
-		for(i=1; i<TAILLE_MAX_SEGMENT; i++) {
-			if(i==1) {
-				num_segment = buffer[0];
-			}
-			fputc(buffer[i],fichier);
-			if(buffer[i] == EOF) {
-				if(PRINT) printf("RECU n°%d\n",num_segment);
-				if(PRINT) printf("*********end************\n");
-				fclose(fichier);
-				return 0;
-			}
-		}
-		if(PRINT) printf("RECU n°%d\n",num_segment);
-
-		if(num_segment >= 0) {
-			if(num_segment < 10) {
-				char num[1];
-				sprintf(num, "%d", num_segment);
-				ack[0] = '0';
-				ack[1] = '0';
-				ack[2] = '0';
-				ack[3] = '0';
-				ack[4] = '0';
-				ack[5] = num[0];
-			} else if(num_segment < 100) {
-				char num[2];
-				sprintf(num, "%d", num_segment);
-				ack[0] = '0';
-				ack[1] = '0';
-				ack[2] = '0';
-				ack[3] = '0';
-				ack[4] = num[0];
-				ack[5] = num[1];
-			} else if(num_segment < 1000) {
-				char num[3];
-				sprintf(num, "%d", num_segment);
-				ack[0] = '0';
-				ack[1] = '0';
-				ack[2] = '0';
-				ack[3] = num[0];
-				ack[4] = num[1];
-				ack[5] = num[2];
-			} else if(num_segment < 10000) {
-				char num[4];
-				sprintf(num, "%d", num_segment);
-				ack[0] = '0';
-				ack[1] = '0';
-				ack[2] = num[0];
-				ack[3] = num[1];
-				ack[4] = num[2];
-				ack[5] = num[3];
-			} else if(num_segment < 100000) {
-				char num[5];
-				sprintf(num, "%d", num_segment);
-				ack[0] = '0';
-				ack[1] = num[0];
-				ack[2] = num[1];
-				ack[3] = num[2];
-				ack[4] = num[3];
-				ack[5] = num[4];
-			} else if(num_segment < 1000000) {
-				char num[6];
-				sprintf(num, "%d", num_segment);
-				ack[0] = num[0];
-				ack[1] = num[1];
-				ack[2] = num[2];
-				ack[3] = num[3];
-				ack[4] = num[4];
-				ack[5] = num[5];
-			} else {
-				perror("Fichier trop grand");
-				return -1;
-			}
-		} else {
-			perror("ERROR, num_segment negatif\n");
-			return -1;
-		}
-
-		send(sock, ack, strlen(ack)+1, 0);
-		if(PRINT) printf("ACK n°%s envoyé\n",ack);
-	}
-	return -1;
 }
 
 

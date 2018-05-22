@@ -12,18 +12,17 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define TAILLE_BUFFER_CIRCULAR 15
-#define SNWD 15
-#define RTT 45 //en dixième de milliseconde
-#define WARNING 2
+#define TAILLE_BUFFER_CIRCULAR 200
+#define SNWD 200
+#define RTT 0 //en dixième de milliseconde
+#define WARNING 4
 #define PRINT 0
 #define PRINT_RESULT 1
 
 typedef struct Buff {
   int numPck;
-  char * buffer;
+  char buffer[TAILLE_MAX_SEGMENT];
   int timeWait;
-  int ackWarning;
   pthread_t threadTime;
   int sizeBuff;
   pthread_mutex_t mutexBuff;
@@ -41,7 +40,6 @@ typedef struct ArgThreadEnvoi{
   int rtt;
   int taille_buffer_circular;
   int snwd;
-  int * nPacketsSend;
   BufferCircular_t * bufferC;
   int sock;
   struct sockaddr *addr;
@@ -71,9 +69,10 @@ int portDispo(char port[4]);
 int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]);
 //int envoyerSegment(int sock, struct sockaddr *addr, int numSegment, char * buff,int sizeFile);
 int envoyerSegment(int sock, struct sockaddr *addr, Buff_t * buff);
-int loadFile(char * buff, char nom_fichier[64]);
-int chargeBuff(char * bufferFile, int numSeg, int size, Buff_t * buff );
 
+int loadFile(char * buff, char nom_fichier[64]);
+int chargeBuff(FILE * fichier, int numSeg, int size, Buff_t * buff );
+FILE * openFichier(char nom_fichier[64]);
 
 char *initBuff(int sizeFile);
 int receive(int sock, char nom_fichier[64]);
@@ -85,6 +84,7 @@ void *functionThreadSend(void* arg);
 void *functionThreadReceive(void* arg);
 void *functionThreadTime(void* arg);
 
+void findBuff(BufferCircular_t *bufferC, int numeroPck);
 int startThreadTime(Buff_t * buff);
 
 

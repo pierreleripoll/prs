@@ -20,8 +20,8 @@ void *functionThreadSend(void* arg) {
   int rtt = argT->rtt;
   int snwd = argT->snwd;
   struct sockaddr *addr = argT->addr;
-  int *nPacketsSend = argT->nPacketsSend;
-  int i, start, stop;
+  printf("Function thread send snwd %d tBC %d\n",snwd,taille_buffer_circular);
+  int i,j, start, stop;
   while(1) {
      pthread_mutex_lock(&bufferC->mutexStart);
      start=bufferC->start;
@@ -35,24 +35,20 @@ void *functionThreadSend(void* arg) {
       if(PRINT) printf("Thread envoi fini\n");
       return NULL;
     }
-    int j=start;
+     j=start;
 
     for(i=0;i<snwd;i++){
       //if(PRINT) printf("TEnvoi : %d to %d\n",start,stop);
     //  if(PRINT) printf("N buff case %d : %d\n",i,bufferC->buffer[i].numPck);
-      j++;
+      j = j+1;
       if(j==taille_buffer_circular) j = 0;
-      if(j<stop || (start>stop && j<taille_buffer_circular) ){
-        pthread_mutex_lock(&bufferC->buffer[i].mutexBuff);
-        if(bufferC->buffer[i].timeWait <= 0 || bufferC->buffer[i].ackWarning > WARNING) {
-
-          envoyerSegment(sock,addr,&bufferC->buffer[i]);
-          *nPacketsSend = *nPacketsSend+1;
-          bufferC->buffer[i].timeWait = rtt;
-          bufferC->buffer[i].ackWarning=0;
-        //  if(PRINT) printf("*******TEMPS RESET %d ****************\n",bufferC->buffer[i].timeWait);
-        }
-        pthread_mutex_unlock(&bufferC->buffer[i].mutexBuff);
+      if(j<stop || (start>stop && j<taille_buffer_circular)  ){
+       pthread_mutex_lock(&bufferC->buffer[j].mutexBuff);
+      //  if(bufferC->buffer[i].timeWait <= 0 ) {
+          envoyerSegment(sock,addr,&bufferC->buffer[j]);
+          bufferC->buffer[j].timeWait = rtt;
+        //}
+        pthread_mutex_unlock(&bufferC->buffer[j].mutexBuff);
 
       }
     }
@@ -60,15 +56,18 @@ void *functionThreadSend(void* arg) {
   return NULL;
 }
 
-int chargeBuff(char * bufferFile, int numSeg, int size, Buff_t * buff ){
-  pthread_mutex_lock(&buff->mutexBuff);
-	buff->buffer =bufferFile;
+
+
+int chargeBuff(FILE * fichier, int numSeg, int size, Buff_t * buff ){
+  //pthread_mutex_lock(&buff->mutexBuff);
+
+	snprintf(buff->buffer,TAILLE_ENTETE+1,"%06d",numSeg);
+  fread(&buff->buffer[TAILLE_ENTETE],size,1,fichier);
 	buff->sizeBuff = size;
 	buff->timeWait=0;
 	buff->numPck = numSeg;
-	buff->ackWarning=0;
 	if(PRINT) printf("Buff %d, size %d, timeWait %d\n",buff->numPck,buff->sizeBuff,buff->timeWait);
-  pthread_mutex_unlock(&buff->mutexBuff);
+  //pthread_mutex_unlock(&buff->mutexBuff);
 	return 1;
 }
 
@@ -82,38 +81,59 @@ void *functionThreadReceive(void* arg) {
   int *snwd = argT->snwd;
   struct sockaddr *addr = argT->addr;
   int *ackReceived = argT->ackReceived;
-  char message_recu[2000];
+  char message_recu[20];
   int newAck;
   int taille_addr_client = argT->taille_addr_client;
-  int n_seg_total= argT->n_seg_total;
+  int lastAck, nAck, start;
+  int lastPaquet = 0;
+
   while(1) {
     while(recvfrom(sock, message_recu, sizeof(message_recu),0,addr, (socklen_t*)&taille_addr_client) >0){
-      if(strcmp(message_recu,"ACK") > 0){
-        if(PRINT) printf("Recu : %s\n",message_recu);
         newAck = atoi(&message_recu[3]);
-        if(PRINT) printf("ACK %d\n",newAck);
-        int i;
-        for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
-          pthread_mutex_lock(&bufferC->buffer[i].mutexBuff);
-          if(bufferC->buffer[i].numPck == newAck+1) bufferC->buffer[i].ackWarning = bufferC->buffer[i].ackWarning +1;
-          pthread_mutex_unlock(&bufferC->buffer[i].mutexBuff);
-        }
-        pthread_mutex_lock(argT->mutexAck);
-        *ackReceived = newAck;
-        pthread_mutex_unlock(argT->mutexAck);
+        if(newAck != lastAck){
+  			lastAck = newAck;
+  			nAck = 1;
+  		}else {
+			nAck +=1;
+			if(nAck>=WARNING){
+				//printf("FAST RESTRANSMIT %d\n",lastAck);
+				nAck = 0;
+				start = bufferC->start;
+				if(bufferC->buffer[start].numPck == lastAck+1){
+					//printf("SEND FAST RETRANSMIRT\n");
+					//bufferC->buffer[start].timeWait = 0;
+					envoyerSegment(sock,addr,&bufferC->buffer[start]);
 
-        }
+				//	bufferC->buffer[start].timeWait = *rtt;
+				}
+			}
+		}
+
+		if(newAck>lastPaquet){
+			pthread_mutex_lock(&bufferC->mutexStart);
+			bufferC->start = bufferC->start +(newAck-lastPaquet);
+			if(bufferC->start>=taille_buffer_circular) bufferC->start = bufferC->start -taille_buffer_circular;
+			pthread_mutex_unlock(&bufferC->mutexStart);
+			lastPaquet = newAck;
+			pthread_mutex_lock(argT->mutexAck);
+			*ackReceived = newAck;
+			pthread_mutex_unlock(argT->mutexAck);
+
+
+		}
+
     }
   }
 }
+
 
 void *functionThreadTime(void* arg) {
   int *t = arg;
   if(PRINT) printf("functionThreadTime created arg==%d\n",*t );
   while(1) {
-    usleep(100);
+    usleep(1000);
     if(*t > 0) {
-      *t = *t-1;
+      *t = *t-10;
       //if(PRINT) printf("%d\n",*t);
     }
   }

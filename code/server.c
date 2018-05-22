@@ -72,7 +72,7 @@ int main(int argc, char **argv)
 		if(PRINT) printf("default port %d\n", portUsr);
 	}
 
-	char message_recu[2000];
+	char message_recu[200];
 	strcpy(message_recu, "");
 
 	while(pere==0) {
@@ -93,24 +93,14 @@ int main(int argc, char **argv)
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		if(PRINT) printf("on a recu : %s\n", message_recu);
 
-		int valid = 0, pointeur = 1;
-
-		struct timeval tv;
-		tv.tv_sec = 0;
-		tv.tv_usec = 0;
 
 		struct stat sb;
 		stat(message_recu,&sb);
 		int sizeFile = sb.st_size;
 
-		char * bufferFile = initBuff(sizeFile);
 
-		int nPacketsSend = 0;
-
-		if (setsockopt(udp_descripteur, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(tv)) < 0) {
-			perror("Error");
-		}
-		int n_seg_total = loadFile(bufferFile,message_recu)+1;
+		int n_seg_total = (sizeFile/TAILLE_UTILE)+1;
+		FILE *fichier=openFichier(message_recu);
 		//FILE *fp ;
 		//fp = fopen("out.txt","wb");
 
@@ -127,8 +117,8 @@ int main(int argc, char **argv)
 		*ackReceived=0;
 		for(i=0;i<taille_buffer_circular;i++){
 
-      chargeBuff(&bufferFile[pointeurFile],n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
-      startThreadTime(&(bufferCircular->buffer[i]));
+      chargeBuff(fichier,n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
+      //startThreadTime(&(bufferCircular->buffer[i]));
 			pthread_mutex_init(&bufferCircular->buffer[i].mutexBuff,NULL);
       pointeurFile+=TAILLE_UTILE;
       n_seg++;
@@ -148,7 +138,6 @@ int main(int argc, char **argv)
     argThreadEnvoi->bufferC=bufferCircular;
     argThreadEnvoi->sock=udp_descripteur;
     argThreadEnvoi->addr=(struct sockaddr *) &addr_client;
-    argThreadEnvoi->nPacketsSend = &nPacketsSend;
     argThreadEnvoi->rtt = rtt;
 		argThreadEnvoi->snwd= snwd;
     argThreadEnvoi->taille_buffer_circular = taille_buffer_circular;
@@ -185,72 +174,44 @@ int main(int argc, char **argv)
 
     while(ack != n_seg_total){
 
-    	// while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-			// 	if(strcmp(message_recu,"ACK") > 0){
-			// 		if(PRINT) printf("Recu : %s\n",message_recu);
-			// 		*ackReceived = atoi(&message_recu[3]);
-			// 		if(PRINT) printf("ACK %d\n",*ackReceived);
-			// 		int i;
-			// 		for(i=0;i<TAILLE_BUFFER_CIRCULAR;i++){
-			// 			pthread_mutex_lock(&bufferCircular->buffer[i].mutexBuff);
-			// 			if(bufferCircular->buffer[i].numPck == *ackReceived+1) bufferCircular->buffer[i].ackWarning = bufferCircular->buffer[i].ackWarning +1;
-			// 			pthread_mutex_unlock(&bufferCircular->buffer[i].mutexBuff);
-			// 		}
-			// 		if(*ackReceived>ack){
-      //       if(PRINT) printf("BREAK\n");
-      //       break;
-      //
-      //     }
-			// 	  }
-			// }
 			pthread_mutex_lock(argThreadReceive->mutexAck);
 			newAck = *ackReceived;
 			pthread_mutex_unlock(argThreadReceive->mutexAck);
 
       if(newAck>ack){
-        if(PRINT) printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
+        //if(PRINT) printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
 
-				pthread_mutex_lock(&bufferCircular->mutexStart);
-        bufferCircular->start = bufferCircular->start +(newAck-ack);
-        if(bufferCircular->start>=taille_buffer_circular) bufferCircular->start = bufferCircular->start -taille_buffer_circular;
-				pthread_mutex_unlock(&bufferCircular->mutexStart);
 
-          int k,j,size= 0;
+          int k,indice=bufferCircular->start-1,j,size= 0;
           for(k=0;k<taille_buffer_circular;k++){ // on cherche le début des paquets validés
-            if(bufferCircular->buffer[k].numPck == ack+1){ // on a trouvé le paquet validé
+						indice = indice+1;
+						if(indice==taille_buffer_circular) indice =0;
+						if(bufferCircular->buffer[indice].numPck == ack+1){ // on a trouvé le paquet validé
               for(j=0;j<(newAck-ack);j++){
                 if(n_seg<=n_seg_total){
-                  if(k==taille_buffer_circular) k =0; //si jamais on est a la limite du buffer C
+                  if(indice==taille_buffer_circular) indice =0; //si jamais on est a la limite du buffer C
                   if(n_seg == n_seg_total) { //c'est le dernier paquet a envoyer
                     size = sizeFile - ((n_seg-1)*TAILLE_UTILE);
-                    //fprintf(stderr,"LASTPAQUET SIZE : %d\n",size);
                   }
                   else size = TAILLE_UTILE;
-                  chargeBuff(&bufferFile[pointeurFile],n_seg,size,&(bufferCircular->buffer[k]));
+                  chargeBuff(fichier,n_seg,size,&(bufferCircular->buffer[indice]));
                   n_seg++;
                   pointeurFile+=TAILLE_UTILE;
-                  k++;
+                  indice=indice+1;
                 }
               }
               break;
             }
+
           }//endFOR
 
-          if(PRINT) printf("*ackReceived %d\n",newAck);
-					pthread_mutex_lock(&bufferCircular->mutexStop);
+		  pthread_mutex_lock(&bufferCircular->mutexStop);
           bufferCircular->stop = bufferCircular->stop+ (newAck-ack);
           if(bufferCircular->stop>=taille_buffer_circular) bufferCircular->stop = bufferCircular->stop -taille_buffer_circular;
 					ack = newAck;
 					if (ack>=n_seg_total) bufferCircular->stop = -1;
-					pthread_mutex_unlock(&bufferCircular->mutexStop);
+				pthread_mutex_unlock(&bufferCircular->mutexStop);
 
-
-          if(PRINT) printf("ACK :%d  START : %d STOP : %d\n",ack,bufferCircular->start,bufferCircular->stop);
-          // if(PRINT) printf("Etat buffer Circular :\n");
-          // int i;
-          // for(i=0;i<taille_buffer_circular;i++){
-          //   if(PRINT) printf("%d : %d | ",i,bufferCircular->buffer[i].numPck);
-          // }
 
       }//ENF IF ACKRECEVEID > ACK
 
@@ -258,66 +219,27 @@ int main(int argc, char **argv)
 
 
 
-
-
-
 		if(PRINT) printf("Fin déclaration du threading\n");
-
-//------------------------------------------------------------------------------------------------
-//************************************************************************************************
-//BEGIN TRANSMISSION
-
-
-
-		// while(valid < n_seg){
-		// 	if(PRINT) printf("SWND=%d VALID=%d ACK=%d\n",swnd,valid,ack);
-		// 	for(pointeur=valid+1;pointeur<valid+1+swnd;pointeur++){
-		// 		if(pointeur<=n_seg){
-		// 			envoyerSegment(udp_descripteur,(struct sockaddr *) &addr_client,pointeur,buffer,sizeFile);
-		// 			nPacketsSend++;
-		// 		}
-		// 		else break;
-		// 	 }
-    //
-		// 	while(recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client) >0){
-		// 		//if(strcmp(message_recu,"ACK") > 0){
-		// 			//if(PRINT) printf("Recu : %s\n",message_recu);
-		// 			if(atoi(&message_recu[3])>ack) ack = atoi(&message_recu[3]);
-		// 			if(PRINT) printf("ACK %d\n",ack);
-		// 			if(ack==n_seg) break;
-		// 		//}
-		// 	}
-		// 	if(ack==n_seg) break;
-		// 	if(ack == valid+swnd)		swnd = swnd*4;
-		// 	else swnd = swnd/2;
-		// 	valid = ack;
-		// 	if(swnd<1) swnd =1;
-		// }
-
-
-
 
 //------------------------------------------------------------------------------------------------
 //************************************************************************************************
 //END TRANSMISSION
 
-
-		sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
-		if(PRINT || PRINT_RESULT) printf("%d packets send\n",nPacketsSend);
 		pthread_cancel(threadEnvoi);
 		pthread_cancel(threadReceive);
+		int n =0;
+		for(n=0;n<10;n++){
+			sendto(udp_descripteur, "FIN", TAILLE_MAX_SEGMENT,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
+		 }
 
-		//fclose(fp);
+
 		clock_gettime(CLOCK_REALTIME, &requestEnd);
 
-		//if(PRINT) printf("CLOCK =%ld\n",clock());
-		//if(PRINT) printf("CLOCKS_PER_SEC =%ld\n",CLOCKS_PER_SEC);
-		double realTime = ( requestEnd.tv_sec - requestStart.tv_sec )
-		  + ( requestEnd.tv_nsec - requestStart.tv_nsec ) / 1E9;
+		double realTime = ( requestEnd.tv_sec - requestStart.tv_sec )+ ( requestEnd.tv_nsec - requestStart.tv_nsec ) / 1E9;
 
-
+		close(udp_descripteur);
 		if(PRINT || PRINT_RESULT) printf("TIME = %.6f\nDEBIT = %.2fko/s\n",realTime,(double) sizeFile/(realTime*1000));
-		free(bufferFile);
+		fclose(fichier);
 		exit(0);
 	}
 
@@ -326,8 +248,8 @@ int main(int argc, char **argv)
 	//************************************************************************************************
 	//KILL PROCESS FILS
 
-
-	for(int x=0; x<maxConnection; x++) {
+	int x;
+	for( x=0; x<maxConnection; x++) {
 		if(pid[x] != 0) {
 			i = x;
 		}
