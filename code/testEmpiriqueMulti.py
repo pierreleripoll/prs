@@ -33,8 +33,8 @@ output= open(output_file, "a")
 rtt = 50
 size = 50
 
-for size in range(10,30,5):
-	for rtt in range(0,100,10):
+for size in range(10,30,2):
+	for rtt in range(0,100,5):
 		server_launch_command= "./server"  +" "+str(size)+" "+str(size)+" "+str(rtt)+" &"
 		client_launch_command1= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name1 + " 0" +" &"
 		client_launch_command2= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name2 + " 0" +" &"
@@ -48,17 +48,17 @@ for size in range(10,30,5):
 		print("launching "+ str(client_name))
 		start_time= time.time()
 		os.system(client_launch_command1)
-		time.sleep(0.5)
+		time.sleep(0.2)
 		print("launching "+ str(client_name))
 		os.system(client_launch_command2)
-		time.sleep(0.5)
+		time.sleep(0.2)
 		print("launching "+ str(client_name))
 		os.system(client_launch_command3)
-		time.sleep(0.5)
+		time.sleep(0.2)
 		print("launching "+ str(client_name))
 		os.system(client_launch_command4)
 		end_time= time.time()
-		delta= end_time- start_time -3
+		delta= end_time- start_time -0.6
 
 
 		statinfo1= os.stat(copy_file_name1)
