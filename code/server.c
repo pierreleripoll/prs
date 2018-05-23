@@ -228,7 +228,7 @@ int main(int argc, char **argv)
 		pthread_join(threadReceive,NULL);
 		int n =0;
 
-		for(n=0;n<100;n++){
+		for(n=0;n<500;n++){
 			sendto(udp_descripteur, "FIN", 30+1,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 			usleep(500);
 		 }
@@ -236,7 +236,7 @@ int main(int argc, char **argv)
 
 
 		close(udp_descripteur);
-=		fclose(fichier);
+		fclose(fichier);
 		exit(0);
 	}
 

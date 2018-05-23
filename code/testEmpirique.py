@@ -10,7 +10,7 @@ output_file= "testEmpirique.txt"
 
 #name= server_name.split("-")
 #suffix= name[0][-2:]
-suffix="1"
+suffix="2"
 
 client_name= "client"+suffix
 
@@ -18,8 +18,8 @@ output= open(output_file, "a")
 rtt = 50
 size = 50
 
-for size in range(10,30,1):
-	for rtt in range(0,100,2):
+for size in range(25,500,25):
+	for rtt in range(0,500,25):
 	  server_launch_command= "./" +server_name  +" "+str(size)+" "+str(size)+" "+str(rtt)+" &"
 	  client_launch_command= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name + " 0"
 	  speed = 0
