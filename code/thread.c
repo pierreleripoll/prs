@@ -20,7 +20,7 @@ void *functionThreadSend(void* arg) {
   int rtt = argT->rtt;
   int snwd = argT->snwd;
   struct sockaddr *addr = argT->addr;
-  printf("Function thread send snwd %d tBC %d\n",snwd,taille_buffer_circular);
+  //printf("Function thread send snwd %d tBC %d\n",snwd,taille_buffer_circular);
   int i,j, start, stop;
   while(1) {
      pthread_mutex_lock(&bufferC->mutexStart);
