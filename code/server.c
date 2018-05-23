@@ -22,19 +22,7 @@ struct sockaddr_in addr_client;
 int taille_addr_client = sizeof(addr_client);
 
 
-void handle_signal() {
-	if(PRINT) printf("SIGNAL HANDLE\n");
-
-	if(pere != 0) {
-		sendto(udp_descripteur, "FIN", 4, 0,(struct sockaddr *)&addr_client, (socklen_t)taille_addr_client);
-		close(udp_descripteur);
-		exit(0);
-	} else {
-		if(PRINT) printf("FATHER CAUGHT SIGNAL\n");
-	}
-	if(PRINT) printf("SIGNAL HANDLE END\n");
-
-}
+void handle_signal() {}
 
 int main(int argc, char **argv)
 {
@@ -55,20 +43,20 @@ int main(int argc, char **argv)
      taille_buffer_circular = atoi(argv[1]);
      snwd = atoi(argv[2]);
      rtt = atoi(argv[3]);
-     printf("%d , %d , %d\n",taille_buffer_circular,snwd,rtt);
+     //printf("%d , %d , %d\n",taille_buffer_circular,snwd,rtt);
    }
 
 	/*******************Arguments lors du lancement du programme********************/
 	if(argc == 2) {
 		portUsr = atoi(argv[1]);
 		if(portUsr <= 1023 && portUsr >= 65535) {
-			if(PRINT) printf("Erreur de port renseigné (en dehors de la range 1023-65534)\n");
+			printf("Erreur de port renseigné (en dehors de la range 1023-65534)\n");
 			return 0;
 		}
-		if(PRINT) printf("port renseigne : %d\n", portUsr);
+		//if(PRINT) printf("port renseigne : %d\n", portUsr);
 	} else {
 		portUsr = 3500;
-		if(PRINT) printf("default port %d\n", portUsr);
+		//if(PRINT) printf("default port %d\n", portUsr);
 	}
 
 	char message_recu[200];
@@ -85,11 +73,11 @@ int main(int argc, char **argv)
 
 	/********************* LANCEMENT BOUCLE INFINIE - PROGRAMME **************/
 	if(connected != 0) {
-		if(PRINT) printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
+		//if(PRINT) printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		/********CONNECTION REUSSI *******************/
-
+		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
-		if(PRINT) printf("on a recu : %s\n", message_recu);
+		//if(PRINT) printf("on a recu : %s\n", message_recu);
 
 
 		struct stat sb;
@@ -107,20 +95,25 @@ int main(int argc, char **argv)
 		pthread_t threadEnvoi;
 		pthread_t threadReceive;
 
+
+
 		BufferCircular_t * bufferCircular = initBufferCircular(taille_buffer_circular);
 		//if(PRINT) printf("Circular buffer initialized\n");
 		int i;
     int n_seg= 1, pointeurFile= 0 ,ack =0, newAck=0;
 		int *ackReceived = malloc(sizeof(int));
 		*ackReceived=0;
-		for(i=0;i<taille_buffer_circular;i++){
 
+		for(i=0;i<taille_buffer_circular;i++){
       chargeBuff(fichier,n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
+			printf("Apres avoir charger le buffer circulaire %d\n", i);
       if(USERTT) startThreadTime(&(bufferCircular->buffer[i]));
 			pthread_mutex_init(&bufferCircular->buffer[i].mutexBuff,NULL);
       pointeurFile+=TAILLE_UTILE;
       n_seg++;
     }
+
+		printf("Après buffer circulaire chargé\n");
 
 		pthread_mutex_init(&bufferCircular->mutexStart,NULL);
 		pthread_mutex_init(&bufferCircular->mutexStop,NULL);
@@ -154,21 +147,17 @@ int main(int argc, char **argv)
 		argThreadReceive->n_seg_total = n_seg_total;
 		pthread_mutex_init(&mutexAck,NULL);
 
-
 		if(pthread_create(&threadEnvoi, NULL, functionThreadSend, argThreadEnvoi) == -1) {
 			perror("pthread_create");
 			return EXIT_FAILURE;
-		}else{
-			printf("Thread Envoi created\n");
 		}
+		else{printf("Thread Envoi created\n");}
 
 		if(pthread_create(&threadReceive, NULL, functionThreadReceive, argThreadReceive) == -1) {
 			perror("pthread_create");
 			return EXIT_FAILURE;
 		}
-		else{
-			printf("Thread Receive created\n");
-		}
+		else{printf("Thread Receive created\n");}
     //fprintf(stderr, "BUFFER FILE : \n%s\n\n\n",&bufferFile[(n_seg_total-1)*TAILLE_UTILE] );
 
     while(ack != n_seg_total){
@@ -228,7 +217,7 @@ int main(int argc, char **argv)
 		pthread_join(threadReceive,NULL);
 		int n =0;
 
-		for(n=0;n<100;n++){
+		for(n=0;n<500;n++){
 			sendto(udp_descripteur, "FIN", 30+1,0,(struct sockaddr *) &addr_client, sizeof(addr_client));
 			usleep(500);
 		 }
@@ -236,7 +225,7 @@ int main(int argc, char **argv)
 
 
 		close(udp_descripteur);
-=		fclose(fichier);
+		fclose(fichier);
 		exit(0);
 	}
 

@@ -65,8 +65,8 @@ void *functionThreadSend(void* arg) {
 
 
 int chargeBuff(FILE * fichier, int numSeg, int size, Buff_t * buff ){
+  printf("j'entre dans charge buff\n");
   pthread_mutex_lock(&buff->mutexBuff);
-
 	snprintf(buff->buffer,TAILLE_ENTETE+1,"%06d",numSeg);
   fread(&buff->buffer[TAILLE_ENTETE],size,1,fichier);
 	buff->sizeBuff = size;
@@ -84,7 +84,7 @@ void *functionThreadReceive(void* arg) {
   int sock = argT->sock;
   int taille_buffer_circular = argT->taille_buffer_circular;
   int *rtt = argT->rtt;
-  int *snwd = argT->snwd;
+  //int *snwd = argT->snwd;
   struct sockaddr *addr = argT->addr;
   int *ackReceived = argT->ackReceived;
   char message_recu[20];
@@ -137,7 +137,7 @@ void *functionThreadReceive(void* arg) {
 
 void *functionThreadTime(void* arg) {
   int *t = arg;
-  if(PRINT) printf("functionThreadTime created arg==%d\n",*t );
+  //if(PRINT) printf("functionThreadTime created arg==%d\n",*t );
   while(1) {
     usleep(1000);
     if(*t > 0) {
@@ -165,4 +165,5 @@ int startThreadTime(Buff_t * buff){
    perror("pthread_create");
    return EXIT_FAILURE;
  }
+ return 0;
 }

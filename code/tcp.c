@@ -31,9 +31,8 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 
 	recvfrom(udp_connection, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 	if(strcmp(message_recu,"SYN") == 0) {
-		if(PRINT){
-			printf("tentative de connection\n");
-		}
+		//if(PRINT) printf("tentative de connection\n");
+
 		char porti[4], msg[11];
 		portDispo(porti);
 		portSocket = atoi(porti);
@@ -44,9 +43,7 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 
 			/*******************Creation des sockets --- UDP ON EST LE FILS ***************************/
 			*udp_descripteur = initialization_socket(portSocket);
-			if(PRINT){
-				printf("Fin boucle init fils\n");
-			}
+			//if(PRINT){	printf("Fin boucle init fils\n");}
 			kill(getppid(),SIGUSR1);
 			return portSocket;
 		}
@@ -55,21 +52,17 @@ int connectServer(int port, int *udp_descripteur, int pid[maxConnection], int i)
 		if(pause()<0){
 			perror("pause");
 		}
-		if(PRINT){
-			printf("Daddy woke up\n");
-		}
+		//if(PRINT)	printf("Daddy woke up\n");
+
 		strcpy(msg, "SYN-ACK");
 		strcat(msg, porti);
-		if(PRINT){
-			printf("msg : %s\n",msg);
-		}
+		//if(PRINT)	printf("msg : %s\n",msg);
+
 		sendto(udp_connection, msg, 12, 0,(struct sockaddr *)&addr_client, (socklen_t)taille_addr_client);
 
 		recvfrom(udp_connection, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		if(strcmp(message_recu,"ACK") == 0) {
-			if(PRINT){
-				printf("CONNECTED SERVEUR\n");
-			}
+			//if(PRINT){printf("CONNECTED SERVEUR\n");}
 			return portSocket;
 		}
 	}
@@ -92,14 +85,11 @@ int initialization_socket(int port) {
 	/*******************Creation des sockets --- UDP -- CONNECTION ***************************/
 	int udp_connection = socket(AF_INET, SOCK_DGRAM, 0); //on crée la socket UDP
 	if(udp_connection < 0) {
-		if(PRINT){
-			printf("Erreur, socket UDP connection non crée\n");
-		}
+		//if(PRINT)			printf("Erreur, socket UDP connection non crée\n");
+
 		return -1;
 	} else {
-		if(PRINT){
-			printf("Descripteur UDP-connection = %d\n", udp_connection);
-		}
+		//if(PRINT){		printf("Descripteur UDP-connection = %d\n", udp_connection);}
 		/*Pour faire en sorte que la socket ne soit pas bloquée*/
 		int reuse = 1;
 		setsockopt(udp_connection, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
@@ -128,9 +118,7 @@ int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 	fichier = fopen(nom_fichier,"rb");
 	char buffer[1024][TAILLE_UTILE];
 	//unsigned int entete[32];
-	if(PRINT){
-		printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
-	}
+	//if(PRINT){printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);}
 		//	printf("***ENVOIE***\n");
 	num_segment = fread(buffer,1024,TAILLE_UTILE,fichier);
 	char message[TAILLE_MAX_SEGMENT];
@@ -138,15 +126,11 @@ int envoyerBinary(int sock,struct sockaddr *addr, char nom_fichier[64]) {
 	for (i=0;i<num_segment;i++){
 		//printf("Buff %d :\n%s\n",i,buffer[i]);
 		snprintf(message,7,"%06d",i);
-		if(PRINT){
-			printf("Entete message : %s\n",message);
-		}
+		//if(PRINT){printf("Entete message : %s\n",message);}
 		strcat(message,buffer[i]);
 		//	printf("Message final :\n%s\n--------------------\n",message);
 		if(sendto(sock, message, 1024,0,addr,sizeof(*addr))==-1){
-			if(PRINT){
-				printf("Error to send i %d",i);
-			}
+			//if(PRINT){printf("Error to send i %d",i);	}
 			perror("send");
 			return -1;
 		}
@@ -160,12 +144,10 @@ int loadFile(char * buff, char nom_fichier[64]){
 
 	FILE *fichier;
 	fichier = fopen(nom_fichier,"rb");
-	if(PRINT){
-		printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);
-	}
+	//if(PRINT){printf("Commencement à recevoir, ouverture du fichier %s\n", nom_fichier);}
 	struct stat sb;
 	stat(nom_fichier,&sb);
-	if(PRINT) printf("File size : %ld\n",sb.st_size);
+	//if(PRINT) printf("File size : %ld\n",sb.st_size);
 	//	if(PRINT) printf("***ENVOIE***\n");
 	num_segment = fread(buff,TAILLE_UTILE,(sb.st_size/TAILLE_UTILE)+1,fichier);
 	if ( ferror( fichier ) != 0 ) {
@@ -173,10 +155,10 @@ int loadFile(char * buff, char nom_fichier[64]){
 			perror("fread");
 	}
 	fclose(fichier);
-	if(PRINT) printf("Buffer size : %zu TAILLE_UTILE = %d\n",num_segment,TAILLE_UTILE);
+	//if(PRINT) printf("Buffer size : %zu TAILLE_UTILE = %d\n",num_segment,TAILLE_UTILE);
 	//num_segment=num_segment/TAILLE_UTILE;
 
-	if(PRINT) printf("%zu segments\n",num_segment+1);
+	//if(PRINT) printf("%zu segments\n",num_segment+1);
 	//if(PRINT) printf("Buffer : %s\n",buff);
 
 

@@ -7,9 +7,10 @@ ip_address= sys.argv[1]
 server_port= sys.argv[2]
 #file_name1="projet2018.pdf"
 file_name1= sys.argv[3]
-file_name2= sys.argv[3]
-file_name3= sys.argv[3]
-file_name4= sys.argv[3]
+file_name2= sys.argv[3]+"1"
+file_name3= sys.argv[3]+"2"
+file_name4= sys.argv[3]+"3"
+
 output_file= "output.txt"
 
 servers= glob.glob("./server")
@@ -29,6 +30,7 @@ for server_name in servers:
   copy_touch_command2= "touch "+ copy_file_name2
   copy_touch_command3= "touch "+ copy_file_name3
   copy_touch_command4= "touch "+ copy_file_name4
+
   os.system(copy_touch_command1)
   os.system(copy_touch_command2)
   os.system(copy_touch_command3)
@@ -46,17 +48,22 @@ for server_name in servers:
 
   os.system(server_launch_command)
   time.sleep(1)
+  print("launching "+ str(client_name))
   start_time= time.time()
   os.system(client_launch_command1)
   time.sleep(1)
+  print("launching "+ str(client_name))
   os.system(client_launch_command2)
   time.sleep(1)
+  print("launching "+ str(client_name))
   os.system(client_launch_command3)
   time.sleep(1)
+  print("launching "+ str(client_name))
   os.system(client_launch_command4)
   end_time= time.time()
   delta= end_time- start_time- 3
 
+  print("launching FINI************")
   statinfo1= os.stat(copy_file_name1)
   statinfo2= os.stat(copy_file_name2)
   statinfo3= os.stat(copy_file_name3)
