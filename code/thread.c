@@ -32,7 +32,7 @@ void *functionThreadSend(void* arg) {
      pthread_mutex_unlock(&bufferC->mutexStop);
 
     if(stop==-1){
-      if(PRINT) printf("Thread envoi fini\n");
+      //if(PRINT) printf("Thread envoi fini\n");
       return NULL;
     }
      j=start;
@@ -65,7 +65,6 @@ void *functionThreadSend(void* arg) {
 
 
 int chargeBuff(FILE * fichier, int numSeg, int size, Buff_t * buff ){
-  printf("j'entre dans charge buff\n");
   pthread_mutex_lock(&buff->mutexBuff);
 	snprintf(buff->buffer,TAILLE_ENTETE+1,"%06d",numSeg);
   fread(&buff->buffer[TAILLE_ENTETE],size,1,fichier);

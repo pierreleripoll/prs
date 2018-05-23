@@ -151,13 +151,13 @@ int main(int argc, char **argv)
 			perror("pthread_create");
 			return EXIT_FAILURE;
 		}
-		else{printf("Thread Envoi created\n");}
+		//else{printf("Thread Envoi created\n");}
 
 		if(pthread_create(&threadReceive, NULL, functionThreadReceive, argThreadReceive) == -1) {
 			perror("pthread_create");
 			return EXIT_FAILURE;
 		}
-		else{printf("Thread Receive created\n");}
+		//else{printf("Thread Receive created\n");}
     //fprintf(stderr, "BUFFER FILE : \n%s\n\n\n",&bufferFile[(n_seg_total-1)*TAILLE_UTILE] );
 
     while(ack != n_seg_total){
