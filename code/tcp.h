@@ -12,12 +12,9 @@
 #define TAILLE_ENTETE 6
 #define TAILLE_UTILE (TAILLE_MAX_SEGMENT-TAILLE_ENTETE)
 
-#define TAILLE_BUFFER_CIRCULAR 20
-#define SNWD 20
-#define RTT 35 //en dixième de milliseconde
 #define WARNING 3
 #define PRINT 0
-#define PRINT_RESULT 1
+#define PRINT_RESULT 0
 #define USERTT 1
 
 typedef struct Buff {

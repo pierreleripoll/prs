@@ -15,6 +15,9 @@
 
 #include "tcp.h"
 
+#define TAILLE_BUFFER_CIRCULAR 18
+#define SNWD 18
+#define RTT 60 //en dixième de milliseconde
 
 int udp_descripteur, pere;
 
