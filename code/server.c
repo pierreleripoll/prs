@@ -75,7 +75,6 @@ int main(int argc, char **argv)
 	if(connected != 0) {
 		//if(PRINT) printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		/********CONNECTION REUSSI *******************/
-		printf("***CONNECTED TRANSFERT***\nConnected=%d\n",connected);
 		recvfrom(udp_descripteur, message_recu, sizeof(message_recu),0,(struct sockaddr *)&addr_client, (socklen_t*)&taille_addr_client);
 		//if(PRINT) printf("on a recu : %s\n", message_recu);
 
@@ -106,14 +105,11 @@ int main(int argc, char **argv)
 
 		for(i=0;i<taille_buffer_circular;i++){
       chargeBuff(fichier,n_seg,TAILLE_UTILE,&(bufferCircular->buffer[i]));
-			printf("Apres avoir charger le buffer circulaire %d\n", i);
       if(USERTT) startThreadTime(&(bufferCircular->buffer[i]));
 			pthread_mutex_init(&bufferCircular->buffer[i].mutexBuff,NULL);
       pointeurFile+=TAILLE_UTILE;
       n_seg++;
     }
-
-		printf("Après buffer circulaire chargé\n");
 
 		pthread_mutex_init(&bufferCircular->mutexStart,NULL);
 		pthread_mutex_init(&bufferCircular->mutexStop,NULL);
