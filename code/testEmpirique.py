@@ -18,8 +18,8 @@ output= open(output_file, "a")
 rtt = 50
 size = 50
 
-for size in [10,15,18,20,25,30,35,50,80]:
-	for rtt in range(1,100,5):
+for size in range(10,30,1):
+	for rtt in range(0,100,2):
 	  server_launch_command= "./" +server_name  +" "+str(size)+" "+str(size)+" "+str(rtt)+" &"
 	  client_launch_command= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name + " 0"
 	  speed = 0
