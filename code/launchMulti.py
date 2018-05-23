@@ -38,7 +38,7 @@ for server_name in servers:
 
   output= open(output_file, "a")
 
-  server_launch_command= "./" +server_name +" " +server_port +" &"
+  server_launch_command= "./" +" " +server_port +" &"
   client_launch_command1= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name1 + " 0" +" &"
   client_launch_command2= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name2 + " 0" +" &"
   client_launch_command3= "./" +client_name +" " +ip_address +" " +server_port +" " +file_name3 + " 0" +" &"
