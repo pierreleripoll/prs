@@ -7,9 +7,9 @@ ip_address= sys.argv[1]
 server_port= sys.argv[2]
 #file_name1="projet2018.pdf"
 file_name1= sys.argv[3]
-file_name2= sys.argv[3]+"1"
-file_name3= sys.argv[3]+"2"
-file_name4= sys.argv[3]+"3"
+file_name2= sys.argv[4]
+file_name3= sys.argv[5]
+file_name4= sys.argv[6]
 
 output_file= "output.txt"
 
